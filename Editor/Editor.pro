@@ -35,6 +35,7 @@ DEFINES += MUP_USE_WIDE_STRING
 DEFINES += NOMINMAX
 
 SOURCES += main.cpp\
+	helpers/DefaultDeviceWatcher.cpp \
 	../services/logging/Logging.cpp \
 	../text/WideString.cpp \
 	../platform/windows/TextEncoding.cpp \
@@ -394,6 +395,7 @@ SOURCES += main.cpp\
 	widgets/DocumentTabBar.cpp
 
 HEADERS  += \
+	helpers/DefaultDeviceWatcher.h \
 	../platform/windows/FileSharingRetry.h \
 	../services/logging/Logging.h \
 	../services/logging/TaggedLogger.h \

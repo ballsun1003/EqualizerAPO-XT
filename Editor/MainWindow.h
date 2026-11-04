@@ -178,6 +178,8 @@ private:
 	// switch path (menu, shortcut, preferences) re-dresses the chrome.
 	void dressSkinChrome();
 	void syncKnobRangeActions();
+	void watchDefaultOutputDevice();
+	void refreshDefaultOutputDevice();
 	void setCurrentRenderMode(FilterTable::RenderMode mode);
 	// Polls the process-owned UpdateSession for a staged background update and raises the
 	// bottom toast once when one appears (the download itself stays silent).
@@ -216,6 +218,8 @@ private:
 	QList<std::shared_ptr<AbstractAPOInfo>> outputDevices;
 	QList<std::shared_ptr<AbstractAPOInfo>> inputDevices;
 	std::shared_ptr<AbstractAPOInfo> defaultOutputDevice;
+	unsigned defaultDeviceGeneration = 0;
+	std::unique_ptr<class DefaultDeviceWatcher> defaultDeviceWatcher;
 	// One per open tab, found through the tab's page (tabs can be moved):
 	// what the tab shows and its instant-mode save debounce (audit #422 D5).
 	std::vector<std::unique_ptr<OpenDocument>> documents;
