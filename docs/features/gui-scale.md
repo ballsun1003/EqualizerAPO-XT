@@ -20,3 +20,8 @@ also resets this choice.
 
 The implementation sets Qt's documented `QT_SCALE_FACTOR` before constructing
 QApplication, including after a settings restart. See [Qt High DPI](https://doc.qt.io/qt-6/highdpi.html).
+
+Local x64 AVX2 validation built both Qt apps. With the saved preference set to
+150% and the launching environment set to `QT_SCALE_FACTOR=1`, the Editor
+rendered a 1100 x 760 logical window at 1650 x 1140 pixels. The original user
+preference was restored after the check.
