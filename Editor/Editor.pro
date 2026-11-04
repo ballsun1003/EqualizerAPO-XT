@@ -395,6 +395,7 @@ SOURCES += main.cpp\
 	widgets/DocumentTabBar.cpp
 
 HEADERS  += \
+	helpers/DefaultDeviceWatcher.h \
 	../platform/windows/FileSharingRetry.h \
 	../services/logging/Logging.h \
 	../services/logging/TaggedLogger.h \
