@@ -14,6 +14,9 @@ tags are clean `vX.Y.Z` names. Installers for every version are on the
 
 ## Unreleased
 
+- The Editor follows changes to the default playback device without reopening.
+  Specific device selections and explicit channel-layout overrides are retained.
+
 ## v2.61.3 — 2026-10-24
 
 - **Rack's Device and Stage buttons latch in bronze too.** In the dark Rack

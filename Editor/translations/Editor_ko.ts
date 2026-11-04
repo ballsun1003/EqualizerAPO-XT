@@ -2911,6 +2911,10 @@ Do you want to run the Device Selector application to fix the problem?</source>
         <source>From device (?)</source>
         <translation>장치 설정 따름 (?)</translation>
     </message>
+    <message>
+        <source>Default (no playback device)</source>
+        <translation>기본값 (재생 장치 없음)</translation>
+    </message>
 </context>
 <context>
     <name>MatrixFilterPickerView</name>

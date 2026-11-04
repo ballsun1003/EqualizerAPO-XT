@@ -87,6 +87,9 @@ EqualizerAPO-XT는 Windows용 시스템 전체 이퀄라이저인 [Equalizer APO
 
 ## 주요 기능
 
+- 편집기에서 **기본 장치**를 선택하면 Windows 기본 재생 장치가 바뀔 때
+  장치 이름, 채널 정보와 분석 대상이 자동으로 갱신됩니다.
+
 - 오디오를 내부에서 double 정밀도로 처리해 복잡한 필터 체인에서도 정밀도를 잃지 않습니다.
 - Convolution, GraphicEQ, 파라메트릭 EQ, VST2/VST3와 기존 Equalizer APO 필터를 지원합니다.
 - ASIO: 모든 ASIO 드라이버가 장치 선택기의 재생·녹음 목록에 나타나고, 체크하면

@@ -109,6 +109,8 @@
     <ClCompile Include="MainWindowStateTests.cpp" />
     <ClCompile Include="PanelMonitorGateTests.cpp" />
     <ClCompile Include="InfrastructureTests.cpp" />
+    <ClCompile Include="DefaultDeviceWatcherTests.cpp" />
+    <ClCompile Include="..\..\Editor\helpers\DefaultDeviceWatcher.cpp" />
     <ClCompile Include="FilterCardModelTests.cpp" />
     <ClCompile Include="FilterListModelTests.cpp" />
     <ClCompile Include="CommandRowFactsTests.cpp" />

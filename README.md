@@ -98,6 +98,9 @@ Current work areas:
 
 ## Features
 
+- The Editor's **Default** device selection follows Windows playback-device
+  changes while open, refreshing channels and analysis automatically.
+
 - Double-precision internal audio processing for complex filter chains.
 - Convolution, GraphicEQ, parametric EQ, VST2/VST3, and standard Equalizer APO filter support.
 - ASIO: every ASIO driver appears in the Device Selector's playback and
