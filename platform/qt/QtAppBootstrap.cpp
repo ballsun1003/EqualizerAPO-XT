@@ -95,6 +95,21 @@ void applyUserLocale()
 		QLocale::setDefault(QLocale::system());
 }
 
+void applyUserScale()
+{
+	// Keep the caller's original override so returning to System default on
+	// an in-process restart does not retain our previous custom multiplier.
+	static const QByteArray inheritedScale = qgetenv("QT_SCALE_FACTOR");
+	QSettings settings(QString::fromWCharArray(EDITOR_REGPATH), QSettings::NativeFormat);
+	const int percent = EditorSettings::readGuiScalePercent(settings);
+	if (percent != 0)
+		qputenv("QT_SCALE_FACTOR", QByteArray::number(percent / 100.0, 'f', 2));
+	else if (inheritedScale.isNull())
+		qunsetenv("QT_SCALE_FACTOR");
+	else
+		qputenv("QT_SCALE_FACTOR", inheritedScale);
+}
+
 void installTranslators(QCoreApplication& app, const QString& catalogName, QTranslator& qtTranslator, QTranslator& appTranslator)
 {
 	if (qtTranslator.load(QLocale(), QStringLiteral(":/translations/qtbase"), QStringLiteral("_")))

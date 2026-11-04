@@ -2911,6 +2911,30 @@ Do you want to run the Device Selector application to fix the problem?</source>
         <source>From device (?)</source>
         <translation>장치 설정 따름 (?)</translation>
     </message>
+    <message>
+        <source>GUI scale</source>
+        <translation>GUI 배율</translation>
+    </message>
+    <message>
+        <source>System default</source>
+        <translation>시스템 기본값</translation>
+    </message>
+    <message>
+        <source>%1%</source>
+        <translation>%1%</translation>
+    </message>
+    <message>
+        <source>Scale (%)</source>
+        <translation>배율 (%)</translation>
+    </message>
+    <message>
+        <source>Scales the entire interface relative to Windows display scaling. Requires restart.</source>
+        <translation>Windows 화면 배율을 기준으로 전체 인터페이스의 크기를 조절합니다. 재시작이 필요합니다.</translation>
+    </message>
+    <message>
+        <source>The new GUI scale will apply after restarting the Editor. Restart now?</source>
+        <translation>새 GUI 배율은 편집기를 재시작하면 적용됩니다. 지금 재시작하시겠습니까?</translation>
+    </message>
 </context>
 <context>
     <name>MatrixFilterPickerView</name>

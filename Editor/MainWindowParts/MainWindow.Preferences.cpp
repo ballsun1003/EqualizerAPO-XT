@@ -23,6 +23,7 @@
 #include <QProcess>
 #include <QKeySequence>
 #include <QSettings>
+#include <QInputDialog>
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -236,6 +237,61 @@ void MainWindow::updateRecentFiles()
 void MainWindow::setupRedesignActions()
 {
 	QMenu* interfaceMenu = ui->menuView->addMenu(tr("Interface"));
+	QMenu* scaleMenu = interfaceMenu->addMenu(tr("GUI scale"));
+	scaleMenu->setToolTipsVisible(true);
+	auto* scaleGroup = new QActionGroup(scaleMenu);
+	scaleGroup->setExclusive(true);
+	QSettings scaleSettings(QString::fromWCharArray(EDITOR_REGPATH), QSettings::NativeFormat);
+	const int savedScale = EditorSettings::readGuiScalePercent(scaleSettings);
+	bool presetScale = false;
+	for (int percent : {0, 50, 75, 100, 125, 150, 175, 200, 250, 300})
+	{
+		auto* action = scaleMenu->addAction(percent == 0 ? tr("System default") : tr("%1%").arg(percent));
+		action->setToolTip(tr("Scales the entire interface relative to Windows display scaling. Requires restart."));
+		action->setCheckable(true);
+		action->setData(percent);
+		action->setChecked(percent == savedScale);
+		presetScale = presetScale || percent == savedScale;
+		scaleGroup->addAction(action);
+	}
+	auto* customScale = scaleMenu->addAction(tr("Custom..."));
+	customScale->setCheckable(true);
+	customScale->setData(-1);
+	customScale->setChecked(!presetScale);
+	scaleGroup->addAction(customScale);
+	connect(scaleGroup, &QActionGroup::triggered, this, [this, scaleGroup, customScale](QAction* action) {
+		QSettings settings(QString::fromWCharArray(EDITOR_REGPATH), QSettings::NativeFormat);
+		const int previous = EditorSettings::readGuiScalePercent(settings);
+		int percent = action->data().toInt();
+		if (percent < 0)
+		{
+			bool accepted = false;
+			percent = QInputDialog::getInt(this, tr("GUI scale"), tr("Scale (%)"),
+				previous == 0 ? 100 : previous, 50, 300, 5, &accepted);
+			if (!accepted)
+			{
+				customScale->setChecked(true);
+				for (auto* candidate : scaleGroup->actions())
+					if (candidate->data().toInt() == previous) candidate->setChecked(true);
+				return;
+			}
+		}
+		if (percent == 0)
+			settings.remove(QLatin1String(EditorSettings::Keys::GuiScalePercent));
+		else
+			settings.setValue(QLatin1String(EditorSettings::Keys::GuiScalePercent), percent);
+		settings.sync();
+		customScale->setChecked(true);
+		for (auto* candidate : scaleGroup->actions())
+			if (candidate->data().toInt() == percent) candidate->setChecked(true);
+		if (percent != previous && QMessageBox::question(this, tr("Restart required"),
+			tr("The new GUI scale will apply after restarting the Editor. Restart now?")) == QMessageBox::Yes)
+		{
+			restart = true;
+			if (!close()) restart = false;
+		}
+	});
+	interfaceMenu->addSeparator();
 
 	interfaceModeActionGroup = new QActionGroup(this);
 	interfaceModeActionGroup->setExclusive(true);
