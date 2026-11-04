@@ -34,20 +34,26 @@ by the parser. The engine skips an invalid line, leaving its input unchanged.
 ```powershell
 VstPreviewProbe.exe --list-classes 'C:\path\WaveShell.vst3'
 VstPreviewProbe.exe --plugin 'C:\path\WaveShell.vst3' --class-id <CID> --seconds 1 --expect-nonsilent
+VstPreviewProbe.exe --plugin 'C:\path\WaveShell.vst3' --class-id <CID> --seconds 1 --expect-nonsilent --check-editor
 ```
 
 The first command prints CID, effect name and subcategories without creating
 an effect. The second processes buffers inside the probe; it does not replace
 the installed APO or play a test tone through the system output.
+The third also restores the saved state into another instance and opens/closes
+its native editor twice in hidden windows. This uses an STA thread, as required
+by native UI components; it checks class identity and positive panel dimensions.
 
 `HybridConvTests` uses two effect classes in the same fixture module, including
 two CIDs with colliding first 32 bits. It covers enumeration, simultaneous
 instances, saved-state restoration, L-only/R-only routing, non-first-class
 engine construction, missing IDs and parser round trips. `Editor.exe
---selftest-vst` also checks that the legacy row preserves CID and state.
+--selftest-vst` also checks legacy/card CID and state serialization, plus switching
+between the fixture classes without reusing incompatible state or channel fill.
 
 Local validation on 2026-11-03 found two MaxxBass classes in WaveShell 14.12 and
 ten Nx classes in WaveShell 17.1. Selecting NX Stereo by CID initialized a
 2-input/2-output float processor, processed 48,128 frames with finite nonzero
-output, and saved a 5,592-character state chunk. This is an in-process test;
+output, and saved a 5,592-character state chunk. Restoring that state reopened
+the NX Stereo native panel twice at 705 x 510. This is an in-process test;
 system audio through a newly installed APO still needs a separate check.
