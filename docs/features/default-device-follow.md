@@ -27,4 +27,9 @@ then repeat with a specifically selected endpoint and with all output devices
 temporarily unavailable. These machine-wide device changes are not performed
 by the automated tests.
 
+Local x64 AVX2 validation passed the Editor build and all 4,184
+`EditorLogicTests` checks, including this notification client's lifetime and
+cross-thread delivery checks. Physical endpoint switching remains a manual
+acceptance check before an installed release.
+
 See [Microsoft's device event contract](https://learn.microsoft.com/en-us/windows/win32/coreaudio/device-events).
