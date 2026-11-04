@@ -5282,4 +5282,27 @@ Change the file permissions or copy the files to the config directory.</source>
         <translation>다음 결정적 변형을 선택합니다</translation>
     </message>
 </context>
+<context>
+    <name>VSTPluginSession</name>
+    <message>
+        <source>Effect</source>
+        <translation>효과</translation>
+    </message>
+    <message>
+        <source>VST3 effect</source>
+        <translation>VST3 효과</translation>
+    </message>
+    <message>
+        <source>Choose the effect inside this VST3 module. Changing it resets the plugin state and channel routing.</source>
+        <translation>이 VST3 모듈 안의 효과를 선택합니다. 효과를 바꾸면 플러그인 상태와 채널 라우팅이 초기화됩니다.</translation>
+    </message>
+    <message>
+        <source>Missing effect: %1</source>
+        <translation>없는 효과: %1</translation>
+    </message>
+    <message>
+        <source>VST3 effect %1 was not found in this library.</source>
+        <translation>이 라이브러리에서 VST3 효과 %1을 찾을 수 없습니다.</translation>
+    </message>
+</context>
 </TS>

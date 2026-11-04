@@ -43,7 +43,7 @@ class VSTPluginFilterGUI : public IFilterGUI
 public:
 	explicit VSTPluginFilterGUI(std::shared_ptr<VSTPluginLibrary> library, const std::wstring& chunkData, const std::unordered_map<std::wstring, float>& paramMap,
 		bool stereoInput = false, const std::optional<VST3BusContract>& busContract = std::nullopt,
-		std::vector<std::wstring> inputChannels = {}, std::vector<std::wstring> outputChannels = {});
+		std::vector<std::wstring> inputChannels = {}, std::vector<std::wstring> outputChannels = {}, std::wstring classId = L"");
 	~VSTPluginFilterGUI() override;
 
 	void store(QString& command, QString& parameters) override;

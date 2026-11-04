@@ -44,7 +44,7 @@ class VST3HostContext;
 class VST3Instance final : public VSTPluginInstance
 {
 public:
-	VST3Instance(const std::shared_ptr<VSTPluginLibrary>& library, int processLevel);
+	VST3Instance(const std::shared_ptr<VSTPluginLibrary>& library, int processLevel, const std::wstring& classId);
 	~VST3Instance() override;
 
 	bool initialize() override;
@@ -89,6 +89,8 @@ public:
 	void onVST3ParameterEdit(Steinberg::Vst::ParamID id, Steinberg::Vst::ParamValue value);
 
 private:
+	std::wstring selectedClassId;
+	Steinberg::PClassInfo selectedClassInfo{};
 	class VST3ParameterChanges;
 
 	// One GUI parameter edit waiting for the processor. The ring below is

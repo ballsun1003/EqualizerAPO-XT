@@ -50,10 +50,10 @@ QString defaultPluginsDirectory()
 
 VSTPluginFilterGUI::VSTPluginFilterGUI(std::shared_ptr<VSTPluginLibrary> library, const std::wstring& chunkData, const std::unordered_map<std::wstring, float>& paramMap,
 	bool stereoInput, const std::optional<VST3BusContract>& busContract,
-	std::vector<std::wstring> inputChannels, std::vector<std::wstring> outputChannels)
+	std::vector<std::wstring> inputChannels, std::vector<std::wstring> outputChannels, std::wstring classId)
 	: ui(std::make_unique<Ui::VSTPluginFilterGUI>()), stereoInput(stereoInput),
 	document(busContract, false, std::move(inputChannels), std::move(outputChannels)),
-	session(std::make_unique<VSTPluginSession>(VSTPluginSession::Row::Legacy, library, chunkData, paramMap))
+	session(std::make_unique<VSTPluginSession>(VSTPluginSession::Row::Legacy, library, chunkData, paramMap, std::move(classId)))
 {
 	ui->setupUi(this);
 	ui->frame->setVisible(false);
@@ -92,6 +92,15 @@ VSTPluginFilterGUI::VSTPluginFilterGUI(std::shared_ptr<VSTPluginLibrary> library
 	// combos are rebuilt from the document's fill whenever the contract, the
 	// lists or the selected channels change.
 	QGridLayout* grid = static_cast<QGridLayout*>(layout());
+	grid->addWidget(session->createClassSelector(this), grid->rowCount(), 0, 1, 4);
+	connect(session.get(), &VSTPluginSession::classChanged, this, [this]() {
+		document.clearLayouts();
+		this->stereoInput = false;
+		QSignalBlocker blocker(stereoInputAction);
+		stereoInputAction->setChecked(false);
+		updateBusControls();
+		updateFillRows();
+	});
 	inputFillRow = new QWidget(this);
 	new QHBoxLayout(inputFillRow);
 	static_cast<QHBoxLayout*>(inputFillRow->layout())->setContentsMargins(0, 0, 0, 0);
@@ -150,6 +159,7 @@ void VSTPluginFilterGUI::store(QString& command, QString& parameters)
 	// by the shared serializer (the same one the round-trip tests exercise).
 	VSTPluginCommand cmd;
 	cmd.chunkData = session->chunkData();
+	cmd.classId = session->classId();
 	cmd.paramMap = session->paramMap();
 	cmd.stereoInput = stereoInput;
 	if (document.bus().contract())

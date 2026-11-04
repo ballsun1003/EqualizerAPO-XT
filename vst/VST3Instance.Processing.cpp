@@ -211,13 +211,13 @@ private:
 };
 
 std::unique_ptr<VSTPluginInstance> createVST3Instance(
-	const std::shared_ptr<VSTPluginLibrary>& library, int processLevel)
+	const std::shared_ptr<VSTPluginLibrary>& library, int processLevel, const std::wstring& classId)
 {
-	return std::make_unique<VST3Instance>(library, processLevel);
+	return std::make_unique<VST3Instance>(library, processLevel, classId);
 }
 
-VST3Instance::VST3Instance(const std::shared_ptr<VSTPluginLibrary>& library, int processLevel)
-	: VSTPluginInstance(library, processLevel), vst3InputParameterChanges(new VST3ParameterChanges())
+VST3Instance::VST3Instance(const std::shared_ptr<VSTPluginLibrary>& library, int processLevel, const std::wstring& classId)
+	: VSTPluginInstance(library, processLevel), selectedClassId(classId), vst3InputParameterChanges(new VST3ParameterChanges())
 {
 }
 

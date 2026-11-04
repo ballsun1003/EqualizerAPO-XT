@@ -57,7 +57,7 @@ public:
 		FilterTable* filterTable = nullptr,
 		QWidget* parent = nullptr,
 		std::vector<std::wstring> inputChannels = {},
-		std::vector<std::wstring> outputChannels = {});
+		std::vector<std::wstring> outputChannels = {}, std::wstring classId = L"");
 	~VSTCardEditor() override;
 
 	void store(QString& command, QString& parameters) override;

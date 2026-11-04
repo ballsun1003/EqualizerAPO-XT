@@ -14,6 +14,10 @@ tags are clean `vX.Y.Z` names. Installers for every version are on the
 
 ## Unreleased
 
+- VST3 cards and legacy rows can select an effect inside a multi-effect module.
+  The saved CID keeps panels and audio processing on the same class. Missing
+  classes fail explicitly, and changing class resets state and channel routing.
+
 ## v2.61.3 — 2026-10-24
 
 - **Rack's Device and Stage buttons latch in bronze too.** In the dark Rack

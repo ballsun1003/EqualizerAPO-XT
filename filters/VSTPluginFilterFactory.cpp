@@ -81,6 +81,9 @@ LineOutcome VSTPluginFilterFactory::createFilter(const wstring& configPath, wstr
 				return LineOutcome::malformed(L"the plugin \"" + library->getLibPath() + L"\" could not be initialised");
 			}
 			create = true;
+			if (!pluginCommand.classId.empty()
+				&& (!library->isVST3() || library->findVST3Class(pluginCommand.classId) == nullptr))
+				return LineOutcome::malformed(L"VST3 ClassId " + pluginCommand.classId + L" was not found in this library");
 		}
 
 		if (create)
@@ -92,10 +95,10 @@ LineOutcome VSTPluginFilterFactory::createFilter(const wstring& configPath, wstr
 			if (pluginCommand.hasBusContract && (configPath.empty() || library->isVST3()))
 				filter = makeFilter<VSTPluginFilter>(library, pluginCommand.chunkData,
 					pluginCommand.paramMap, pluginCommand.busContract,
-					pluginCommand.inputChannels, pluginCommand.outputChannels);
+					pluginCommand.inputChannels, pluginCommand.outputChannels, pluginCommand.classId);
 			else
 				filter = makeFilter<VSTPluginFilter>(library, pluginCommand.chunkData,
-					pluginCommand.paramMap, pluginCommand.stereoInput);
+					pluginCommand.paramMap, pluginCommand.stereoInput, pluginCommand.classId);
 		}
 	}
 

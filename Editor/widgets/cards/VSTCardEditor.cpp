@@ -58,10 +58,10 @@ VSTCardEditor::VSTCardEditor(shared_ptr<VSTPluginLibrary> library, const wstring
 	const unordered_map<wstring, float>& paramMap, bool stereoInput,
 	const std::optional<VST3BusContract>& busContract,
 	std::vector<std::wstring> deviceChannelNames, FilterTable* filterTable, QWidget* parent,
-	std::vector<std::wstring> inputChannels, std::vector<std::wstring> outputChannels)
+	std::vector<std::wstring> inputChannels, std::vector<std::wstring> outputChannels, std::wstring classId)
 	: IFilterGUI(parent),
 	document(busContract, stereoInput, std::move(inputChannels), std::move(outputChannels)),
-	session(std::make_unique<VSTPluginSession>(VSTPluginSession::Row::Card, library, chunkData, paramMap)),
+	session(std::make_unique<VSTPluginSession>(VSTPluginSession::Row::Card, library, chunkData, paramMap, std::move(classId))),
 	deviceChannelNames(std::move(deviceChannelNames)),
 	filterTable(filterTable)
 {
@@ -77,6 +77,10 @@ VSTCardEditor::VSTCardEditor(shared_ptr<VSTPluginLibrary> library, const wstring
 	connect(view, SIGNAL(nameActivated()), this, SLOT(openPanel()));
 	connect(view, SIGNAL(pathCommitted(QString)), this, SLOT(pathCommitted(QString)));
 	root->addWidget(view);
+	root->addWidget(session->createClassSelector(this));
+	connect(session.get(), &VSTPluginSession::classChanged, this, [this]() {
+		document.clearLayouts();
+	});
 
 	const SkinTokens& tokens = SkinManager::instance()->tokens();
 	const QColor actionColor(tokens.text);
@@ -224,6 +228,7 @@ void VSTCardEditor::store(QString& command, QString& parameters)
 	// again. The frozen legacy row keeps writing it losslessly.
 	VSTPluginCommand cmd;
 	cmd.chunkData = session->chunkData();
+	cmd.classId = session->classId();
 	cmd.paramMap = session->paramMap();
 	cmd.stereoInput = false;
 	if (document.bus().contract())
@@ -687,7 +692,7 @@ REGISTER_FILTER_CARD_EDITOR(VSTPlugin, [](FilterTable* filterTable, const QStrin
 			filterTable != nullptr ? filterTable->getChannelNames() : std::vector<std::wstring>(),
 			filterTable, nullptr,
 			cmd.hasBusContract ? cmd.inputChannels : std::vector<std::wstring>(),
-			cmd.hasBusContract ? cmd.outputChannels : std::vector<std::wstring>());
+			cmd.hasBusContract ? cmd.outputChannels : std::vector<std::wstring>(), cmd.classId);
 	}
 	else
 	{

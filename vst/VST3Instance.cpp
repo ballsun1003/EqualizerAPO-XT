@@ -36,9 +36,16 @@ using namespace Steinberg::Vst;
 
 bool VST3Instance::initialize()
 {
+	const auto* selected = library->findVST3Class(selectedClassId);
+	if (selected == nullptr)
+	{
+		LogF(L"VST3 ClassId %s was not found in %s.", selectedClassId.c_str(), library->getLibPath().c_str());
+		return false;
+	}
+	selectedClassInfo = selected->info;
 	vst3HostContext = IPtr<VST3HostContext>::adopt(new VST3HostContext(this));
 
-	const PClassInfo& classInfo = library->getVST3ClassInfo();
+	const PClassInfo& classInfo = selectedClassInfo;
 	FUID componentId(classInfo.cid);
 	TUID componentIid;
 	IComponent::iid.toTUID(componentIid);
@@ -479,7 +486,7 @@ int VST3Instance::numOutputs() const
 
 int VST3Instance::uniqueID() const
 {
-	const PClassInfo& classInfo = library->getVST3ClassInfo();
+	const PClassInfo& classInfo = selectedClassInfo;
 	int result = 0;
 	memcpy(&result, classInfo.cid, sizeof(result));
 	return result;
@@ -487,7 +494,7 @@ int VST3Instance::uniqueID() const
 
 std::wstring VST3Instance::getName() const
 {
-	return wintext::toWideString(library->getVST3ClassInfo().name, CP_UTF8);
+	return wintext::toWideString(selectedClassInfo.name, CP_UTF8);
 }
 
 int VST3Instance::getInitialDelay() const

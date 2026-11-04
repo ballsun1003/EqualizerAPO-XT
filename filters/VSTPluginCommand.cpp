@@ -176,8 +176,23 @@ VSTPluginCommand VSTPluginCommand::parse(const wstring& /*configPath*/, const ws
 	bool sawOutputKey = false;
 	bool sawLayoutValue = false;
 	bool sawDanglingBusKey = false;
+	bool sawClassId = false;
 	for (size_t i = 0; i < parts.size(); i += 2)
 	{
+		if (parts[i] == L"ClassId")
+		{
+			if (sawClassId || i + 1 == parts.size() || parts[i + 1].size() != 32
+				|| parts[i + 1].find_first_not_of(L"0123456789abcdefABCDEF") != wstring::npos)
+			{
+				cmd.valid = false;
+				cmd.error = L"ClassId must occur once with exactly 32 hexadecimal digits";
+				return cmd;
+			}
+			sawClassId = true;
+			cmd.classId = parts[i + 1];
+			for (auto& c : cmd.classId)
+				if (c >= L'a' && c <= L'f') c -= L'a' - L'A';
+		}
 		if (parts[i] == L"Input" || parts[i] == L"Output")
 		{
 			sawInputKey = sawInputKey || parts[i] == L"Input";
@@ -219,6 +234,8 @@ VSTPluginCommand VSTPluginCommand::parse(const wstring& /*configPath*/, const ws
 		{
 			const wstring& key = parts[i];
 			const wstring& value = parts[i + 1];
+			if (key == L"ClassId")
+				continue;
 			if (key == L"Library")
 			{
 				if (sawLibrary)
@@ -362,7 +379,7 @@ VSTPluginCommand VSTPluginCommand::parse(const wstring& /*configPath*/, const ws
 		wstring key = parts[i];
 		wstring value = parts[i + 1];
 
-		if (key == L"Library")
+		if (key == L"Library" || key == L"ClassId")
 			continue;
 		else if (key == L"ChunkData")
 		{
@@ -404,6 +421,8 @@ std::wstring VSTPluginCommand::serialize() const
 	// append it directly.
 	wstring result;
 
+	if (!classId.empty())
+		result += L" ClassId " + classId;
 	if (hasBusContract)
 	{
 		result += L" Input ";

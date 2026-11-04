@@ -26,12 +26,12 @@
 std::unique_ptr<VSTPluginInstance> createVST2Instance(
 	const std::shared_ptr<VSTPluginLibrary>& library, int processLevel);
 std::unique_ptr<VSTPluginInstance> createVST3Instance(
-	const std::shared_ptr<VSTPluginLibrary>& library, int processLevel);
+	const std::shared_ptr<VSTPluginLibrary>& library, int processLevel, const std::wstring& classId);
 
 std::unique_ptr<VSTPluginInstance> VSTPluginInstance::create(
-	const std::shared_ptr<VSTPluginLibrary>& library, int processLevel)
+	const std::shared_ptr<VSTPluginLibrary>& library, int processLevel, const std::wstring& classId)
 {
-	return library->isVST3() ? createVST3Instance(library, processLevel) : createVST2Instance(library, processLevel);
+	return library->isVST3() ? createVST3Instance(library, processLevel, classId) : createVST2Instance(library, processLevel);
 }
 
 bool VSTPluginInstance::isVST3() const
