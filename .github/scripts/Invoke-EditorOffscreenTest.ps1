@@ -46,7 +46,9 @@ $editorExe = Join-Path $buildDir "Editor.exe"
 $gates = @{
     "selftest-vst" = [pscustomobject]@{
         Arguments  = @("--selftest-vst")
-        ExtraEnv   = @{}
+        ExtraEnv   = @{
+            EAPO_GALLERY_VST3_PLUGIN = Join-Path $WorkspaceRoot "Tests\TestVst3Plugin\$Platform\Release\TestVst3Plugin.vst3"
+        }
         LogPath    = $null
         PostChecks = @()
     }

@@ -385,6 +385,19 @@ int SkinGallery::runVstRoundTripSelfTest()
 		VSTPluginFilterGUI gui(f0->getLibrary(), chunk0, map0, stereo0, bus0, fillIn0, fillOut0, f0->getClassId());
 		QString outCommand, outParams;
 		gui.store(outCommand, outParams);
+		if (!f0->getClassId().empty())
+		{
+			VSTCardEditor card(f0->getLibrary(), chunk0, map0, stereo0, bus0, {}, nullptr, nullptr,
+				fillIn0, fillOut0, f0->getClassId());
+			QString cardCommand, cardParams;
+			card.store(cardCommand, cardParams);
+			const auto restored = VSTPluginCommand::parse(L"", cardParams.toStdWString());
+			if (restored.classId != f0->getClassId() || restored.chunkData != chunk0 || restored.paramMap != map0)
+			{
+				fprintf(stderr, "[VST selftest] card lost class identity or state\n");
+				++failures;
+			}
+		}
 
 		std::wstring command2 = outCommand.toStdWString();
 		std::wstring params2 = outParams.toStdWString();
@@ -428,6 +441,37 @@ int SkinGallery::runVstRoundTripSelfTest()
 		}
 	}
 
+	const QString fixturePath = qEnvironmentVariable("EAPO_GALLERY_VST3_PLUGIN");
+	if (!fixturePath.isEmpty())
+	{
+		QWidget host;
+		auto library = VSTPluginLibrary::getInstance(fixturePath.toStdWString());
+		VSTPluginSession selected(VSTPluginSession::Row::Card, library, L"old-class-state", {{L"100", 0.75f}});
+		VSTPluginSession other(VSTPluginSession::Row::Legacy, library, L"", {});
+		auto* selector = selected.createClassSelector(&host);
+		selected.requestPlugin();
+		other.requestPlugin();
+		VSTPluginSession::waitForPendingLoads(30000);
+		auto* combo = selector->findChild<QComboBox*>(QStringLiteral("VSTClassSelector"));
+		if (selected.instance() == nullptr || other.instance() == nullptr || combo == nullptr || combo->count() != 2)
+		{
+			fprintf(stderr, "[VST selftest] multi-effect selector did not load both classes\n");
+			++failures;
+		}
+		else
+		{
+			const auto firstId = other.classId();
+			const auto secondId = combo->itemData(1).toString().toStdWString();
+			selected.selectClass(secondId);
+			if (selected.instance() == nullptr || selected.classId() != secondId || other.classId() != firstId
+				|| selected.instance()->getName() != L"TestVst3SecondEffect" || other.instance()->getName() != L"TestVst3Plugin"
+				|| !selected.chunkData().empty() || !selected.paramMap().empty())
+			{
+				fprintf(stderr, "[VST selftest] switching class mixed identity or retained incompatible state\n");
+				++failures;
+			}
+		}
+	}
 	fprintf(stderr, "[VST selftest] %s (%d failure(s))\n", failures == 0 ? "PASS" : "FAIL", failures);
 	return failures == 0 ? 0 : 1;
 }
