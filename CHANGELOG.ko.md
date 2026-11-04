@@ -8,6 +8,10 @@ TheFireKahuna의 equalizerAPO64 트리에서 포크된 뒤(마지막 업스트�
 
 ## Unreleased
 
+- 편집기의 플러그인 작업이 종료되면 보관하던 VST 모듈을 Windows의 DLL 정리보다
+  먼저 해제합니다. 실제 WaveShell에서 확인한 `InnerProcessDictionary_x64.dll`
+  종료 충돌을 수정했으며, 실행 중 모듈 재사용은 유지합니다.
+
 - VST3 카드와 레거시 행에서 WaveShell 같은 모듈 내부 효과를 선택할 수 있습니다.
   클래스 ID를 저장해 패널과 오디오 엔진이 같은 효과를 사용합니다. 저장된 효과가
   없으면 오류를 표시하며, 효과를 바꾸면 이전 상태와 채널 라우팅을 초기화합니다.

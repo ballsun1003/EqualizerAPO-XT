@@ -57,3 +57,16 @@ ten Nx classes in WaveShell 17.1. Selecting NX Stereo by CID initialized a
 output, and saved a 5,592-character state chunk. Restoring that state reopened
 the NX Stereo native panel twice at 705 x 510. This is an in-process test;
 system audio through a newly installed APO still needs a separate check.
+
+## Editor shutdown
+
+An installed WaveShell 17.1 intermittently crashed in
+`InnerProcessDictionary_x64!ReleaseDictionaryItemRefCon` during
+`LdrShutdownProcess`, after the Editor returned successfully. The Editor now
+drains its retained-module registry in reverse order after all plugin instances
+and workers stop. Factory release and `ExitDll` run before Windows tears down
+shared DLL dependencies. No module is unloaded on a skin/device change, and the
+APO continues retaining modules throughout its process lifetime.
+
+The registry release is idempotent and covered by the host tests. Three
+consecutive NX Stereo window/analysis/shutdown runs passed after this change.
