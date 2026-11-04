@@ -30,6 +30,7 @@ inline constexpr char Skin[] = "interface/skin";
 inline constexpr char Dark[] = "interface/dark";
 inline constexpr char LegacyRows[] = "interface/legacyRows";
 inline constexpr char NativeTitleBar[] = "interface/nativeTitleBar";
+inline constexpr char GuiScalePercent[] = "interface/guiScalePercent";
 inline constexpr char KnobGainRange[] = "interface/knobGainRange";
 // Analysis dock view choices. Stored under EDITOR_REGPATH like every other
 // preference; they briefly lived in Qt's default QSettings location, which
@@ -53,6 +54,14 @@ struct SkinChoice
 	QString id;
 	bool dark = false;
 };
+
+// Zero follows Qt/Windows defaults (including an externally supplied scale).
+inline int readGuiScalePercent(const QSettings& settings)
+{
+	bool ok = false;
+	const int percent = settings.value(QLatin1String(Keys::GuiScalePercent)).toInt(&ok);
+	return ok && percent >= 50 && percent <= 300 ? percent : 0;
+}
 
 inline SkinChoice readSkinChoice(const QSettings& settings, bool defaultDark)
 {

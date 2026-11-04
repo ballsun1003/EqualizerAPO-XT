@@ -428,6 +428,7 @@ int main(int argc, char* argv[])
 			qputenv("QT_QPA_PLATFORM", "windows");
 		}
 
+		QtAppBootstrap::applyUserScale();
 		QApplication application(argc, argv);
 		// Before anything can load a plug-in; see PluginLoadQueue.h.
 		PluginLoadQueue::prepareUiThread();

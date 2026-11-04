@@ -87,6 +87,9 @@ EqualizerAPO-XT는 Windows용 시스템 전체 이퀄라이저인 [Equalizer APO
 
 ## 주요 기능
 
+- **보기 → 인터페이스 → GUI 배율**에서 Windows 화면 배율에 대한 GUI 배율을
+  50~300%로 조절합니다. 사용자 지정 배율도 입력할 수 있습니다.
+
 - WaveShell처럼 여러 효과를 제공하는 VST3 모듈에서 효과를 직접 선택하고 저장합니다.
   패널과 오디오 엔진은 같은 클래스 ID를 사용합니다.
   [VST3 효과 선택](docs/features/vst3-classes.md)에 설정 문법과 진단 방법이 있습니다.

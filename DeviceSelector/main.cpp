@@ -455,6 +455,7 @@ int main(int argc, char* argv[])
 	// the Editor.
 	QtAppBootstrap::addExecutableRelativePluginPath();
 
+	QtAppBootstrap::applyUserScale();
 	QApplication app(argc, argv);
 
 	// Language first, exactly like the live dialog: the Editor's language

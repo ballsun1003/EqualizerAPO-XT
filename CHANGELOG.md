@@ -14,6 +14,9 @@ tags are clean `vX.Y.Z` names. Installers for every version are on the
 
 ## Unreleased
 
+- Added a persistent GUI scale preference (50–300%, including custom values)
+  for the Editor and Device Selector, applied on restart.
+
 - VST3 cards and legacy rows can select an effect inside a multi-effect module.
   The saved CID keeps panels and audio processing on the same class. Missing
   classes fail explicitly, and changing class resets state and channel routing.

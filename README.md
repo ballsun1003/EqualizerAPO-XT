@@ -98,6 +98,9 @@ Current work areas:
 
 ## Features
 
+- Adjust the GUI to 50–300% of Windows display scaling in
+  **View → Interface → GUI scale**, including custom percentages.
+
 - Select and persist individual VST3 effects inside multi-effect modules such
   as WaveShell, with the same class used by the panel and audio engine. See
   [VST3 effect selection](docs/features/vst3-classes.md).
