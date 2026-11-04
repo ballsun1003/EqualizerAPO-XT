@@ -278,9 +278,11 @@ function Read-State([string] $line) {
             $tail = $tail.Substring($match.Length)
         }
     } else {
-        $match = [regex]::Match($tail, '^\s+ChunkData\s+"([A-Za-z0-9+/=]+)"\s*$')
+        # New saves pin the selected VST3 class before its full state. Keep
+        # validating the whole tail, including CID syntax and ChunkData.
+        $match = [regex]::Match($tail, '^\s+(?:ClassId\s+[A-Fa-f0-9]{32}\s+)?ChunkData\s+"(?<chunk>[A-Za-z0-9+/=]+)"\s*$')
         if (-not $match.Success) { throw 'VST3 state requires a full ChunkData "<base64>" token' }
-        $blob = [Convert]::FromBase64String($match.Groups[1].Value)
+        $blob = [Convert]::FromBase64String($match.Groups['chunk'].Value)
         if ($blob.Length -ge 4 -and [Text.Encoding]::ASCII.GetString($blob, 0, 4) -eq 'E3ST') {
             if ($blob.Length -lt 20 -or [BitConverter]::ToUInt32($blob, 4) -ne 1) { throw 'Invalid E3ST version/header' }
             $componentSize = [long][BitConverter]::ToUInt32($blob, 8)
