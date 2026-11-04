@@ -101,9 +101,9 @@ static std::mutex& instanceMapMutex()
 }
 
 // The policy and the registry behind PluginResidency.h. The registry is
-// guarded by instanceMapMutex and is created on first use and never
-// destroyed: emptying it at process exit would run ExitDll and FreeLibrary
-// from static destruction, under the loader lock.
+// guarded by instanceMapMutex and is created on first use. No static
+// destructor releases it: DLL hosts retain it for process lifetime, while
+// executable hosts can explicitly drain it after their workers stop.
 static std::atomic<bool> keepPluginsLoaded{false};
 
 static std::vector<std::shared_ptr<VSTPluginLibrary>>& retainedLibraries()
@@ -121,6 +121,20 @@ bool PluginResidency::holdsLoadedModules()
 {
 	lock_guard<mutex> lock(instanceMapMutex());
 	return !retainedLibraries().empty();
+}
+
+void PluginResidency::releaseForProcessShutdown()
+{
+	keepPluginsLoaded.store(false);
+	vector<shared_ptr<VSTPluginLibrary>> libraries;
+	{
+		lock_guard<mutex> lock(instanceMapMutex());
+		libraries.swap(retainedLibraries());
+	}
+	// Destructors re-enter instanceMapMutex. Release outside the lock, before
+	// Windows starts tearing down plugin dependencies in DLL_PROCESS_DETACH.
+	while (!libraries.empty())
+		libraries.pop_back();
 }
 
 void VSTPluginLibrary::retainIfKeepingLoaded(const shared_ptr<VSTPluginLibrary>& library)

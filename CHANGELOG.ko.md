@@ -8,6 +8,10 @@ TheFireKahuna의 equalizerAPO64 트리에서 포크된 뒤(마지막 업스트�
 
 ## Unreleased
 
+- 편집기의 플러그인 작업이 종료되면 보관하던 VST 모듈을 Windows의 DLL 정리보다
+  먼저 해제합니다. 실제 WaveShell에서 확인한 `InnerProcessDictionary_x64.dll`
+  종료 충돌을 수정했으며, 실행 중 모듈 재사용은 유지합니다.
+
 - 편집기가 열린 상태에서도 기본 재생 장치 변경을 감지해 표시와 분석을 갱신합니다.
   특정 장치를 직접 선택한 경우와 사용자 지정 채널 구성은 유지합니다.
 

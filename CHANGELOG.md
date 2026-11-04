@@ -14,6 +14,10 @@ tags are clean `vX.Y.Z` names. Installers for every version are on the
 
 ## Unreleased
 
+- Release retained VST modules after the Editor's plugin workers stop, before
+  Windows DLL teardown. This fixes the observed WaveShell shutdown crash in
+  `InnerProcessDictionary_x64.dll`; runtime module reuse remains unchanged.
+
 - The Editor follows changes to the default playback device without reopening.
   Specific device selections and explicit channel-layout overrides are retained.
 

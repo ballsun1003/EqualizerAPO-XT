@@ -106,7 +106,8 @@ Current work areas:
 
 - Select and persist individual VST3 effects inside multi-effect modules such
   as WaveShell, with the same class used by the panel and audio engine. See
-  [VST3 effect selection](docs/features/vst3-classes.md).
+  [VST3 effect selection](docs/features/vst3-classes.md). The Editor releases
+  retained modules before process teardown to avoid WaveShell shutdown crashes.
 
 - Double-precision internal audio processing for complex filter chains.
 - Convolution, GraphicEQ, parametric EQ, VST2/VST3, and standard Equalizer APO filter support.

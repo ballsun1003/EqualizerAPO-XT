@@ -96,6 +96,7 @@ EqualizerAPO-XT는 Windows용 시스템 전체 이퀄라이저인 [Equalizer APO
 - WaveShell처럼 여러 효과를 제공하는 VST3 모듈에서 효과를 직접 선택하고 저장합니다.
   패널과 오디오 엔진은 같은 클래스 ID를 사용합니다.
   [VST3 효과 선택](docs/features/vst3-classes.md)에 설정 문법과 진단 방법이 있습니다.
+  편집기 종료 시 보관하던 모듈을 먼저 정리해 WaveShell의 종료 충돌을 방지합니다.
 
 - 오디오를 내부에서 double 정밀도로 처리해 복잡한 필터 체인에서도 정밀도를 잃지 않습니다.
 - Convolution, GraphicEQ, 파라메트릭 EQ, VST2/VST3와 기존 Equalizer APO 필터를 지원합니다.
