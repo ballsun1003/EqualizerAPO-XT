@@ -35,6 +35,7 @@ DEFINES += MUP_USE_WIDE_STRING
 DEFINES += NOMINMAX
 
 SOURCES += main.cpp\
+	helpers/DefaultDeviceWatcher.cpp \
 	../services/logging/Logging.cpp \
 	../text/WideString.cpp \
 	../platform/windows/TextEncoding.cpp \

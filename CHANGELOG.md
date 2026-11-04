@@ -14,6 +14,9 @@ tags are clean `vX.Y.Z` names. Installers for every version are on the
 
 ## Unreleased
 
+- The Editor follows changes to the default playback device without reopening.
+  Specific device selections and explicit channel-layout overrides are retained.
+
 - Added a persistent GUI scale preference (50–300%, including custom values)
   for the Editor and Device Selector, applied on restart.
 

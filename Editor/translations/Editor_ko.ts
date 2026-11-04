@@ -2935,6 +2935,10 @@ Do you want to run the Device Selector application to fix the problem?</source>
         <source>The new GUI scale will apply after restarting the Editor. Restart now?</source>
         <translation>새 GUI 배율은 편집기를 재시작하면 적용됩니다. 지금 재시작하시겠습니까?</translation>
     </message>
+    <message>
+        <source>Default (no playback device)</source>
+        <translation>기본값 (재생 장치 없음)</translation>
+    </message>
 </context>
 <context>
     <name>MatrixFilterPickerView</name>

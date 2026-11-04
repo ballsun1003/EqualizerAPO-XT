@@ -20,6 +20,8 @@
 #include <QMessageBox>
 #include <QProcess>
 #include <QSettings>
+#include <QTimer>
+#include "Editor/helpers/DefaultDeviceWatcher.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -48,6 +50,54 @@ using std::stringstream;
 using std::vector;
 using std::wstring;
 
+
+void MainWindow::watchDefaultOutputDevice()
+{
+	auto* debounce = new QTimer(this);
+	debounce->setSingleShot(true);
+	debounce->setInterval(100);
+	connect(debounce, &QTimer::timeout, this, &MainWindow::refreshDefaultOutputDevice);
+	defaultDeviceWatcher = std::make_unique<DefaultDeviceWatcher>([this, debounce]() {
+		++defaultDeviceGeneration; // Invalidate an old probe as soon as an event arrives.
+		debounce->start();
+	}, this);
+	if (!defaultDeviceWatcher->registered())
+		LogF(L"Could not register the Editor's default audio device notification callback.");
+	// Closes the enumeration/registration race during startup.
+	refreshDefaultOutputDevice();
+}
+
+void MainWindow::refreshDefaultOutputDevice()
+{
+	const unsigned generation = ++defaultDeviceGeneration;
+	BackgroundProbe::runFor(this, []() -> shared_ptr<AbstractAPOInfo> {
+		const wstring guid = DeviceAPOInfo::getDefaultDevice(false);
+		if (guid.empty()) return nullptr;
+		auto device = std::make_shared<DeviceAPOInfo>();
+		return device->load(guid, guid) ? device : nullptr;
+	}, [this, generation](const shared_ptr<AbstractAPOInfo>& device) {
+		if (generation != defaultDeviceGeneration) return;
+		defaultOutputDevice = device;
+		deviceComboBox->setItemText(0, device != nullptr
+			? tr("Default (%1 - %2)").arg(QString::fromStdWString(device->getConnectionName()),
+				QString::fromStdWString(device->getDeviceName()))
+			: tr("Default (no playback device)"));
+		// A specifically selected endpoint stays selected. Only the Default
+		// choice follows Windows; all tabs and analysis use the fresh device.
+		if (deviceComboBox->currentIndex() != 0) return;
+		const int channelMask = channelConfigurationComboBox->currentData().toInt();
+		const QString analysisChannel = ui->analysisChannelComboBox->currentText();
+		deviceSelected(0);
+		const int channelIndex = channelConfigurationComboBox->findData(channelMask);
+		if (channelIndex > 0)
+		{
+			channelConfigurationComboBox->setCurrentIndex(channelIndex);
+			channelConfigurationSelected(channelIndex);
+		}
+		const int analysisIndex = ui->analysisChannelComboBox->findText(analysisChannel);
+		if (analysisIndex >= 0) ui->analysisChannelComboBox->setCurrentIndex(analysisIndex);
+	});
+}
 
 void MainWindow::deviceSelected(int index)
 {

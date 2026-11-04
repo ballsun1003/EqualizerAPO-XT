@@ -98,6 +98,9 @@ Current work areas:
 
 ## Features
 
+- The Editor's **Default** device selection follows Windows playback-device
+  changes while open, refreshing channels and analysis automatically.
+
 - Adjust the GUI to 50–300% of Windows display scaling in
   **View → Interface → GUI scale**, including custom percentages.
 

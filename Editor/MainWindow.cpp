@@ -58,6 +58,7 @@
 #include "SkinManager.h"
 #include "ui_MainWindow.h"
 #include "devices/DeviceAPOInfo.h"
+#include "Editor/helpers/DefaultDeviceWatcher.h"
 
 using std::find;
 using std::list;
@@ -137,9 +138,10 @@ MainWindow::MainWindow(QDir configDir, const UpdateSession* updateSession, QWidg
 	connect(deviceComboBox, QOverload<int>::of(&QComboBox::activated), this, &MainWindow::deviceSelected);
 
 	QStandardItemModel* model = qobject_cast<QStandardItemModel*>(deviceComboBox->model());
-	if (defaultOutputDevice != nullptr)
-		deviceComboBox->addItem(tr("Default (%1 - %2)").arg(QString::fromStdWString(defaultOutputDevice->getConnectionName()),
-			QString::fromStdWString(defaultOutputDevice->getDeviceName())), QVariant::fromValue(shared_ptr<AbstractAPOInfo>()));
+	deviceComboBox->addItem(defaultOutputDevice != nullptr
+		? tr("Default (%1 - %2)").arg(QString::fromStdWString(defaultOutputDevice->getConnectionName()),
+			QString::fromStdWString(defaultOutputDevice->getDeviceName()))
+		: tr("Default (no playback device)"), QVariant::fromValue(shared_ptr<AbstractAPOInfo>()));
 
 	deviceComboBox->addItem(tr("Playback devices:"));
 	QStandardItem* item = model->item(model->rowCount() - 1);
@@ -255,6 +257,8 @@ MainWindow::MainWindow(QDir configDir, const UpdateSession* updateSession, QWidg
 
 	setupRedesignActions();
 	loadPreferences();
+	if (!analysisLayoutTestMode)
+		watchDefaultOutputDevice();
 	watchForPendingUpdate();
 }
 
@@ -285,7 +289,9 @@ void MainWindow::watchForPendingUpdate()
 }
 
 MainWindow::~MainWindow()
-= default;
+{
+	defaultDeviceWatcher.reset();
+}
 
 void MainWindow::doChecks()
 {
