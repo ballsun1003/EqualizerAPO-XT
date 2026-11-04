@@ -472,6 +472,36 @@ int SkinGallery::runVstRoundTripSelfTest()
 				fprintf(stderr, "[VST selftest] switching class mixed identity or retained incompatible state\n");
 				++failures;
 			}
+
+			// Exercise the actual card control too: the session owns identity,
+			// but the card owns the channel contract and slot-fill document.
+			VSTCardEditor card(library, L"old-class-state", {{L"100", 0.75f}}, false,
+				VST3BusContract{VST3BusLayout::Stereo, VST3BusLayout::Stereo},
+				{L"L", L"R"}, nullptr, nullptr, {L"L", L"R"}, {L"R", L"L"}, firstId);
+			card.loadPreferences(QVariantMap());
+			auto* cardCombo = card.findChild<QComboBox*>(QStringLiteral("VSTClassSelector"));
+			const int secondIndex = cardCombo != nullptr
+				? cardCombo->findData(QString::fromStdWString(secondId)) : -1;
+			if (secondIndex < 0)
+			{
+				fprintf(stderr, "[VST selftest] card effect selector is unavailable\n");
+				++failures;
+			}
+			else
+			{
+				cardCombo->setCurrentIndex(secondIndex);
+				Q_EMIT cardCombo->activated(secondIndex);
+				QString command, parameters;
+				card.store(command, parameters);
+				const auto saved = VSTPluginCommand::parse(L"", parameters.toStdWString());
+				if (!saved.valid || saved.classId != secondId || !saved.chunkData.empty()
+					|| !saved.paramMap.empty() || saved.hasBusContract || saved.stereoInput
+					|| !saved.inputChannels.empty() || !saved.outputChannels.empty())
+				{
+					fprintf(stderr, "[VST selftest] card class switch retained old state or routing\n");
+					++failures;
+				}
+			}
 		}
 	}
 	fprintf(stderr, "[VST selftest] %s (%d failure(s))\n", failures == 0 ? "PASS" : "FAIL", failures);
