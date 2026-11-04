@@ -25,6 +25,7 @@
 #include <optional>
 #include <unordered_map>
 #include "filters/VSTPluginFilter.h"
+#include "filters/VSTPluginCommand.h"
 #include "filters/VSTPluginFilterFactory.h"
 
 #include <QApplication>
@@ -55,6 +56,7 @@
 #include "Editor/skins/rack/cards/RackReferenceCardView.h"
 #include "Editor/widgets/FilterCardRow.h"
 #include "Editor/widgets/cards/VSTPluginSession.h"
+#include "Editor/widgets/cards/VSTCardEditor.h"
 #include "Editor/widgets/cards/VSTSlotFillRail.h"
 #include "Editor/widgets/routing/IRoutingRenderer.h"
 #include "vst/VST3BusLayout.h"
