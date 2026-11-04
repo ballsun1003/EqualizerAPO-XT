@@ -414,7 +414,8 @@ void VSTPluginSession::finishPendingReplacement()
 	if (!replacementPending)
 		return;
 	replacementPending = false;
-	if (effect == nullptr || replacementOldId == 0 || effect->uniqueID() != replacementOldId)
+	// Only two VST2 instances can use the legacy 32-bit compatibility key.
+	if (effect == nullptr || effect->isVST3() || replacementOldId == 0 || effect->uniqueID() != replacementOldId)
 	{
 		currentChunkData.clear();
 		currentParamMap.clear();
