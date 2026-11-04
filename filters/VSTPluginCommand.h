@@ -41,6 +41,7 @@
 struct VSTPluginCommand
 {
 	std::wstring libraryPath;
+	std::wstring classId;
 	std::wstring chunkData;
 	std::unordered_map<std::wstring, float> paramMap;
 	// "Input <layout> Output <layout>" is an explicit main-bus contract for

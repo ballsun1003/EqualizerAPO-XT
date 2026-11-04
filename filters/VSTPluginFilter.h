@@ -34,11 +34,11 @@ class VSTPluginFilter : public IFilter
 {
 public:
 	VSTPluginFilter(std::shared_ptr<VSTPluginLibrary> library, std::wstring chunkData, const std::unordered_map<std::wstring, float>& paramMap,
-		bool stereoInput = false);
+		bool stereoInput = false, std::wstring classId = L"");
 	VSTPluginFilter(std::shared_ptr<VSTPluginLibrary> library, std::wstring chunkData,
 		const std::unordered_map<std::wstring, float>& paramMap, VST3BusContract busContract,
 		std::vector<std::wstring> inputChannels = std::vector<std::wstring>(),
-		std::vector<std::wstring> outputChannels = std::vector<std::wstring>());
+		std::vector<std::wstring> outputChannels = std::vector<std::wstring>(), std::wstring classId = L"");
 	~VSTPluginFilter();
 
 	bool getInPlace() override {return false;}
@@ -47,6 +47,7 @@ public:
 	void process(double** output, double** input, unsigned frameCount) override;
 
 	std::shared_ptr<VSTPluginLibrary> getLibrary() const;
+	const std::wstring& getClassId() const { return classId; }
 	const std::wstring& getChunkData() const;
 	const std::unordered_map<std::wstring, float>& getParamMap() const;
 	bool getStereoInput() const;
@@ -89,6 +90,7 @@ private:
 
 	std::shared_ptr<VSTPluginLibrary> library;
 	std::wstring libPath;
+	std::wstring classId;
 	std::wstring chunkData;
 	std::unordered_map<std::wstring, float> paramMap;
 	size_t channelCount = 0;

@@ -683,6 +683,10 @@ int main(int argc, char* argv[])
 	PluginLoadQueue::shutdown();
 	// The same for an endpoint format probe still running.
 	BackgroundProbe::shutdown();
+	// All plugin users are gone. Release factories/ExitDll while their shared
+	// dependencies are still alive, rather than leaving Waves' dictionary
+	// cleanup to Windows' DLL_PROCESS_DETACH order.
+	PluginResidency::releaseForProcessShutdown();
 
 	// The session owns the download worker. Join it before inspecting staged state so
 	// neither process shutdown nor static destruction can race with its publication.

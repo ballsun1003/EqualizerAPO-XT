@@ -136,7 +136,8 @@ bool processDoubleGuarded(VSTPluginInstance* instance, double** input, double** 
 	}
 }
 
-int runPluginProbe(const std::wstring& pluginPath, double seconds, float sampleRate, bool expectNonsilent)
+int runPluginProbe(const std::wstring& pluginPath, double seconds, float sampleRate, bool expectNonsilent,
+	const std::wstring& classId, bool checkEditor)
 {
 	StepClock clock;
 	std::shared_ptr<VSTPluginLibrary> library = VSTPluginLibrary::getInstance(pluginPath);
@@ -148,7 +149,7 @@ int runPluginProbe(const std::wstring& pluginPath, double seconds, float sampleR
 		return 2;
 	}
 
-	auto instanceOwner = VSTPluginInstance::create(library, 1);
+	auto instanceOwner = VSTPluginInstance::create(library, 1, classId);
 	VSTPluginInstance& instance = *instanceOwner;
 	if (!instance.initialize())
 	{
@@ -241,6 +242,30 @@ int runPluginProbe(const std::wstring& pluginPath, double seconds, float sampleR
 	clock.lap(L"read state");
 	wprintf(L"INFO: processed %lld frames, output peak %.6f, state chunk %zu chars, %zu named params\n",
 		position, outputPeak, chunkData.size(), paramMap.size());
+	if (checkEditor)
+	{
+		const std::wstring expectedName = instance.getName();
+		auto restored = VSTPluginInstance::create(library, 1, classId);
+		if (!restored->initialize()) return 2;
+		restored->writeToEffect(chunkData, paramMap);
+		restored->prepareForProcessing(sampleRate, blockFrames);
+		for (int panel = 0; panel < 2; ++panel)
+		{
+			HWND host = CreateWindowExW(0, L"STATIC", L"VST editor probe", WS_OVERLAPPED,
+				0, 0, 1280, 960, nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
+			if (host == nullptr) return 2;
+			short width = 0, height = 0;
+			const bool opened = restored->startEditing(host, &width, &height);
+			if (opened) restored->stopEditing();
+			DestroyWindow(host);
+			if (!opened || width <= 0 || height <= 0 || restored->getName() != expectedName)
+			{
+				wprintf(L"FAIL: restored editor could not reopen with the selected class\n");
+				return 2;
+			}
+			wprintf(L"INFO: restored '%s' panel %d opened at %d x %d\n", expectedName.c_str(), panel + 1, width, height);
+		}
+	}
 
 	if (!outputFinite)
 	{
@@ -642,7 +667,10 @@ int runCaptureProbe(double seconds, bool expectAudio)
 
 int wmain(int argc, wchar_t* argv[])
 {
+	setvbuf(stdout, nullptr, _IONBF, 0);
 	std::wstring pluginPath;
+	std::wstring classId;
+	std::wstring listClassesPath;
 	std::wstring monitorPluginPath;
 	double seconds = 2.0;
 	float sampleRate = 48000.0f;
@@ -655,6 +683,8 @@ int wmain(int argc, wchar_t* argv[])
 	const wchar_t* usage =
 		L"Usage: VstPreviewProbe [--plugin <path.vst3|path.dll>] [--seconds N] [--rate N]\n"
 		L"                       [--expect-nonsilent] [--loopback]\n"
+		L"                       [--class-id <32-hex-CID>] [--list-classes <module.vst3>]\n"
+		L"                       [--check-editor] (restore state and reopen a hidden native panel twice)\n"
 		L"                       [--monitor <path.vst3|path.dll>] [--expect-live | --expect-static]\n"
 		L"                       [--capture-only] [--expect-audio | --expect-silence]\n";
 
@@ -665,6 +695,8 @@ int wmain(int argc, wchar_t* argv[])
 	probesupport::SetBoolVisitor expectAudioVisitor(expectAudio, true);
 	probesupport::SetBoolVisitor expectSilenceVisitor(expectAudio, false);
 	TCLAP::MultiArg<std::string> pluginArg("", "plugin", "", false, "value", parser);
+	TCLAP::MultiArg<std::string> classIdArg("", "class-id", "", false, "value", parser);
+	TCLAP::MultiArg<std::string> listClassesArg("", "list-classes", "", false, "value", parser);
 	TCLAP::MultiArg<std::string> monitorArg("", "monitor", "", false, "value", parser);
 	TCLAP::MultiArg<std::string> secondsArg("", "seconds", "", false, "value", parser);
 	TCLAP::MultiArg<std::string> rateArg("", "rate", "", false, "value", parser);
@@ -675,6 +707,7 @@ int wmain(int argc, wchar_t* argv[])
 	TCLAP::MultiSwitchArg expectSilenceArg("", "expect-silence", "", parser, 0, &expectSilenceVisitor);
 	TCLAP::MultiSwitchArg loopbackArg("", "loopback", "", parser);
 	TCLAP::MultiSwitchArg captureOnlyArg("", "capture-only", "", parser);
+	TCLAP::MultiSwitchArg checkEditorArg("", "check-editor", "", parser);
 	if (!commandLine.parse(argc, argv))
 	{
 		wprintf(L"%s", usage);
@@ -683,6 +716,10 @@ int wmain(int argc, wchar_t* argv[])
 
 	if (pluginArg.isSet())
 		pluginPath = probesupport::lastWide(pluginArg);
+	if (classIdArg.isSet())
+		classId = probesupport::lastWide(classIdArg);
+	if (listClassesArg.isSet())
+		listClassesPath = probesupport::lastWide(listClassesArg);
 	if (monitorArg.isSet())
 		monitorPluginPath = probesupport::lastWide(monitorArg);
 	if (secondsArg.isSet())
@@ -692,22 +729,30 @@ int wmain(int argc, wchar_t* argv[])
 	expectNonsilent = expectNonsilentArg.getValue() != 0;
 	loopback = loopbackArg.getValue() != 0;
 	captureOnly = captureOnlyArg.getValue() != 0;
-	if (pluginPath.empty() && monitorPluginPath.empty() && !loopback && !captureOnly)
+	if (pluginPath.empty() && listClassesPath.empty() && monitorPluginPath.empty() && !loopback && !captureOnly)
 	{
 		wprintf(L"%s", usage);
 		return 1;
 	}
 
-	ComApartment apartment(COINIT_MULTITHREADED);
+	ComApartment apartment(checkEditorArg.getValue() != 0 ? COINIT_APARTMENTTHREADED : COINIT_MULTITHREADED);
 	if (!apartment.isUsable())
 	{
 		wprintf(L"FAIL: COM initialization (hr=0x%08lx)\n", apartment.status());
 		return 4;
 	}
 
+	if (!listClassesPath.empty())
+	{
+		const auto loaded = VSTPluginLibrary::load(listClassesPath);
+		if (loaded.status < 0 || !loaded.library->isVST3())
+			return 2;
+		for (const auto& entry : loaded.library->getVST3Classes())
+			wprintf(L"%ls\t%hs\t%hs\n", entry.id.c_str(), entry.info.name, entry.subCategories.c_str());
+	}
 	if (!pluginPath.empty())
 	{
-		const int result = runPluginProbe(pluginPath, seconds, sampleRate, expectNonsilent);
+		const int result = runPluginProbe(pluginPath, seconds, sampleRate, expectNonsilent, classId, checkEditorArg.getValue() != 0);
 		if (result != 0)
 			return result;
 	}

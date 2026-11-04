@@ -43,4 +43,10 @@ void keepLoadedForProcessLifetime(bool keep);
 // True once a plugin library has been retained. The APO's DllCanUnloadNow
 // refuses while this holds: the retained objects run code from that DLL.
 bool holdsLoadedModules();
+
+// Executable hosts only: call after all plugin instances and loading/processing
+// workers have stopped, before CRT/DLL process teardown. Releases the registry
+// in reverse load order outside its lock, and disables further retention.
+// Never call from DllMain or an APO's unload path.
+void releaseForProcessShutdown();
 }

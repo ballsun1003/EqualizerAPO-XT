@@ -25,6 +25,7 @@
 #include <optional>
 #include <unordered_map>
 #include "filters/VSTPluginFilter.h"
+#include "filters/VSTPluginCommand.h"
 #include "filters/VSTPluginFilterFactory.h"
 
 #include <QApplication>
@@ -55,6 +56,7 @@
 #include "Editor/skins/rack/cards/RackReferenceCardView.h"
 #include "Editor/widgets/FilterCardRow.h"
 #include "Editor/widgets/cards/VSTPluginSession.h"
+#include "Editor/widgets/cards/VSTCardEditor.h"
 #include "Editor/widgets/cards/VSTSlotFillRail.h"
 #include "Editor/widgets/routing/IRoutingRenderer.h"
 #include "vst/VST3BusLayout.h"
@@ -350,6 +352,7 @@ int SkinGallery::runVstRoundTripSelfTest()
 {
 	struct Case { const wchar_t* name = nullptr; std::wstring params; };
 	const Case cases[] = {
+		{ L"classId", L"Library fake.vst3 ClassId 7A53DB11446B41D49D7659A119A23402 ChunkData QUJDRA==" },
 		{ L"chunkData", L"Library \"fake plugin.dll\" ChunkData \"QUJDREVGR0g=\"" },
 		{ L"paramMap", L"Library fake.dll Gain 0.5 Mix 0.25 Width 1" },
 		{ L"paramMap-quoted-name", L"Library fake.dll \"Dry/Wet\" 0.75 Output 0.5" },
@@ -381,9 +384,22 @@ int SkinGallery::runVstRoundTripSelfTest()
 		const std::vector<std::wstring> fillIn0 = f0->getInputChannels();
 		const std::vector<std::wstring> fillOut0 = f0->getOutputChannels();
 
-		VSTPluginFilterGUI gui(f0->getLibrary(), chunk0, map0, stereo0, bus0, fillIn0, fillOut0);
+		VSTPluginFilterGUI gui(f0->getLibrary(), chunk0, map0, stereo0, bus0, fillIn0, fillOut0, f0->getClassId());
 		QString outCommand, outParams;
 		gui.store(outCommand, outParams);
+		if (!f0->getClassId().empty())
+		{
+			VSTCardEditor card(f0->getLibrary(), chunk0, map0, stereo0, bus0, {}, nullptr, nullptr,
+				fillIn0, fillOut0, f0->getClassId());
+			QString cardCommand, cardParams;
+			card.store(cardCommand, cardParams);
+			const auto restored = VSTPluginCommand::parse(L"", cardParams.toStdWString());
+			if (restored.classId != f0->getClassId() || restored.chunkData != chunk0 || restored.paramMap != map0)
+			{
+				fprintf(stderr, "[VST selftest] card lost class identity or state\n");
+				++failures;
+			}
+		}
 
 		std::wstring command2 = outCommand.toStdWString();
 		std::wstring params2 = outParams.toStdWString();
@@ -402,7 +418,8 @@ int SkinGallery::runVstRoundTripSelfTest()
 		const bool sameBusContract = bus0.has_value() == bus1.has_value()
 			&& (!bus0 || (bus0->input == bus1->input && bus0->output == bus1->output));
 		const bool sameSlotFill = fillIn0 == f1->getInputChannels() && fillOut0 == f1->getOutputChannels();
-		bool ok = (chunk0 == chunk1) && (map0 == map1) && (stereo0 == stereo1) && sameBusContract && sameSlotFill;
+		bool ok = (chunk0 == chunk1) && (map0 == map1) && (stereo0 == stereo1) && sameBusContract && sameSlotFill
+			&& f0->getClassId() == f1->getClassId();
 		if (!ok)
 		{
 			failures++;
@@ -426,6 +443,67 @@ int SkinGallery::runVstRoundTripSelfTest()
 		}
 	}
 
+	const QString fixturePath = qEnvironmentVariable("EAPO_GALLERY_VST3_PLUGIN");
+	if (!fixturePath.isEmpty())
+	{
+		QWidget host;
+		auto library = VSTPluginLibrary::getInstance(fixturePath.toStdWString());
+		VSTPluginSession selected(VSTPluginSession::Row::Card, library, L"old-class-state", {{L"100", 0.75f}});
+		VSTPluginSession other(VSTPluginSession::Row::Legacy, library, L"", {});
+		auto* selector = selected.createClassSelector(&host);
+		selected.requestPlugin();
+		other.requestPlugin();
+		VSTPluginSession::waitForPendingLoads(30000);
+		auto* combo = selector->findChild<QComboBox*>(QStringLiteral("VSTClassSelector"));
+		if (selected.instance() == nullptr || other.instance() == nullptr || combo == nullptr || combo->count() != 2)
+		{
+			fprintf(stderr, "[VST selftest] multi-effect selector did not load both classes\n");
+			++failures;
+		}
+		else
+		{
+			const auto firstId = other.classId();
+			const auto secondId = combo->itemData(1).toString().toStdWString();
+			selected.selectClass(secondId);
+			if (selected.instance() == nullptr || selected.classId() != secondId || other.classId() != firstId
+				|| selected.instance()->getName() != L"TestVst3SecondEffect" || other.instance()->getName() != L"TestVst3Plugin"
+				|| !selected.chunkData().empty() || !selected.paramMap().empty())
+			{
+				fprintf(stderr, "[VST selftest] switching class mixed identity or retained incompatible state\n");
+				++failures;
+			}
+
+			// Exercise the actual card control too: the session owns identity,
+			// but the card owns the channel contract and slot-fill document.
+			VSTCardEditor card(library, L"old-class-state", {{L"100", 0.75f}}, false,
+				VST3BusContract{VST3BusLayout::Stereo, VST3BusLayout::Stereo},
+				{L"L", L"R"}, nullptr, nullptr, {L"L", L"R"}, {L"R", L"L"}, firstId);
+			card.loadPreferences(QVariantMap());
+			auto* cardCombo = card.findChild<QComboBox*>(QStringLiteral("VSTClassSelector"));
+			const int secondIndex = cardCombo != nullptr
+				? cardCombo->findData(QString::fromStdWString(secondId)) : -1;
+			if (secondIndex < 0)
+			{
+				fprintf(stderr, "[VST selftest] card effect selector is unavailable\n");
+				++failures;
+			}
+			else
+			{
+				cardCombo->setCurrentIndex(secondIndex);
+				Q_EMIT cardCombo->activated(secondIndex);
+				QString command, parameters;
+				card.store(command, parameters);
+				const auto saved = VSTPluginCommand::parse(L"", parameters.toStdWString());
+				if (!saved.valid || saved.classId != secondId || !saved.chunkData.empty()
+					|| !saved.paramMap.empty() || saved.hasBusContract || saved.stereoInput
+					|| !saved.inputChannels.empty() || !saved.outputChannels.empty())
+				{
+					fprintf(stderr, "[VST selftest] card class switch retained old state or routing\n");
+					++failures;
+				}
+			}
+		}
+	}
 	fprintf(stderr, "[VST selftest] %s (%d failure(s))\n", failures == 0 ? "PASS" : "FAIL", failures);
 	return failures == 0 ? 0 : 1;
 }

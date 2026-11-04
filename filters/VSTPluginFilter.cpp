@@ -64,15 +64,15 @@ std::vector<std::wstring> channelNameSlice(const std::vector<std::wstring>& chan
 }
 
 VSTPluginFilter::VSTPluginFilter(std::shared_ptr<VSTPluginLibrary> library, std::wstring chunkData, const std::unordered_map<std::wstring, float>& paramMap,
-	bool stereoInput)
-	: library(library), libPath(library->getLibPath()), chunkData(chunkData), paramMap(paramMap), forceStereoInput(stereoInput)
+	bool stereoInput, std::wstring classId)
+	: library(library), libPath(library->getLibPath()), classId(std::move(classId)), chunkData(chunkData), paramMap(paramMap), forceStereoInput(stereoInput)
 {
 }
 
 VSTPluginFilter::VSTPluginFilter(std::shared_ptr<VSTPluginLibrary> library, std::wstring chunkData,
 	const std::unordered_map<std::wstring, float>& paramMap, VST3BusContract busContract,
-	std::vector<std::wstring> inputChannels, std::vector<std::wstring> outputChannels)
-	: library(library), libPath(library->getLibPath()), chunkData(chunkData), paramMap(paramMap),
+	std::vector<std::wstring> inputChannels, std::vector<std::wstring> outputChannels, std::wstring classId)
+	: library(library), libPath(library->getLibPath()), classId(std::move(classId)), chunkData(chunkData), paramMap(paramMap),
 	busContract(busContract), inputChannels(std::move(inputChannels)), outputChannels(std::move(outputChannels))
 {
 }
@@ -149,7 +149,7 @@ bool VSTPluginFilter::createFirstInstance(InitContext& context, const std::vecto
 {
 	try
 	{
-		context.firstEffect = VSTPluginInstance::create(library, 2);
+		context.firstEffect = VSTPluginInstance::create(library, 2, classId);
 	}
 	catch (const std::bad_alloc&)
 	{
@@ -172,7 +172,8 @@ bool VSTPluginFilter::createFirstInstance(InitContext& context, const std::vecto
 	// for anything but an upmixer a narrowed input bus would discard device
 	// channels.
 	context.upmixerLayout = !busContract && channelCount > 2
-		&& (forceStereoInput || isUpmixerSubCategory(library->getVST3SubCategories()));
+		&& (forceStereoInput || (library->isVST3()
+			&& isUpmixerSubCategory(library->findVST3Class(classId)->subCategories)));
 	if (channelCount <= kMaxPluginChannelCount
 		&& !negotiateInstance(context.firstEffect.get(), static_cast<unsigned>(channelCount), channelNames,
 			context.upmixerLayout))
@@ -274,7 +275,7 @@ bool VSTPluginFilter::createRemainingInstances(InitContext& context, const std::
 	{
 		try
 		{
-			effects.push_back(VSTPluginInstance::create(library, 2));
+			effects.push_back(VSTPluginInstance::create(library, 2, classId));
 		}
 		catch (const std::bad_alloc&)
 		{

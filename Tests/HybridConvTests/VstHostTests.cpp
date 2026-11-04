@@ -532,6 +532,16 @@ void testProcessLifetimeResidency(const wstring& dir, const wstring& dllPath)
 	if (retainedAfterFilter && repeatResult == 0 && reusedHandle && PluginResidency::holdsLoadedModules())
 		std::printf("VST residency policy on: module retained and repeat initialization reused its handle\n");
 
+	PluginResidency::releaseForProcessShutdown();
+	harness.expectTrue(!PluginResidency::holdsLoadedModules(),
+		"orderly process shutdown drains the retained registry");
+	harness.expectTrue(GetModuleHandleW(residentPath.c_str()) == nullptr
+		&& GetModuleHandleW(workerPath.c_str()) == nullptr,
+		"orderly process shutdown unloads both UI and worker-retained modules");
+	PluginResidency::releaseForProcessShutdown();
+	harness.expectTrue(!PluginResidency::holdsLoadedModules(),
+		"orderly process shutdown is idempotent");
+
 	harness.expectTrue(DeleteFileW(unloadPath.c_str()) != FALSE,
 		"the unloaded test plugin copy is deleted at the end of the test");
 }

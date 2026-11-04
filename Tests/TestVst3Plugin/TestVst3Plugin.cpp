@@ -39,6 +39,8 @@ namespace
 {
 const TUID componentCid = INLINE_UID(0x7A53DB11, 0x446B41D4, 0x9D7659A1, 0x19A23401);
 const TUID controllerCid = INLINE_UID(0xC49B9B30, 0x72E44A1B, 0x935EAB31, 0x2EEFA402);
+// Deliberately shares the first 32 bits: a VST2-sized uniqueID is not a VST3 identity.
+const TUID secondComponentCid = INLINE_UID(0x7A53DB11, 0x446B41D4, 0x9D7659A1, 0x19A23402);
 constexpr ParamID gainParamId = 100;
 
 enum class ComponentScenario
@@ -350,10 +352,11 @@ IEditController* createTestController();
 class TestComponent final : public IComponent, public IAudioProcessor, public IEditController, private RefCounted
 {
 public:
-	TestComponent(ComponentScenario scenario)
+	TestComponent(ComponentScenario scenario, double initialGain = 1.0)
 		: combinedController(scenario == ComponentScenario::combinedDouble),
 		supportsDouble(scenario != ComponentScenario::splitFloat)
 	{
+		state.gain = initialGain;
 		if (combinedController)
 			controllerDelegate = createTestController();
 	}
@@ -1134,11 +1137,16 @@ public:
 		*info = PFactoryInfo("EqualizerAPO-XT Tests", "https://example.invalid", "test@example.invalid", PFactoryInfo::kNoFlags);
 		return kResultOk;
 	}
-	int32 PLUGIN_API countClasses() override { return 2; }
+	int32 PLUGIN_API countClasses() override { return 3; }
 	tresult PLUGIN_API getClassInfo(int32 index, PClassInfo* info) override
 	{
-		if (info == nullptr || index < 0 || index > 1)
+		if (info == nullptr || index < 0 || index > 2)
 			return kInvalidArgument;
+		if (index == 2)
+		{
+			*info = PClassInfo(secondComponentCid, PClassInfo::kManyInstances, kVstAudioEffectClass, "TestVst3SecondEffect");
+			return kResultOk;
+		}
 		*info = index == 0
 			? PClassInfo(componentCid, PClassInfo::kManyInstances, kVstAudioEffectClass, "TestVst3Plugin")
 			: PClassInfo(controllerCid, PClassInfo::kManyInstances, kVstComponentControllerClass, "TestVst3Controller");
@@ -1168,6 +1176,8 @@ public:
 				instance = static_cast<IComponent*>(new TestComponent(scenarios[componentInstanceCount++ % 3]));
 			}
 		}
+		else if (FUnknownPrivate::iidEqual(cid, secondComponentCid))
+			instance = static_cast<IComponent*>(new TestComponent(ComponentScenario::splitDouble, 0.25));
 		else if (FUnknownPrivate::iidEqual(cid, controllerCid))
 			instance = static_cast<IEditController*>(new TestController());
 		else
@@ -1178,7 +1188,7 @@ public:
 	}
 	tresult PLUGIN_API getClassInfo2(int32 index, PClassInfo2* info) override
 	{
-		if (info == nullptr || index < 0 || index > 1)
+		if (info == nullptr || index < 0 || index > 2)
 			return kInvalidArgument;
 		PClassInfo basic;
 		getClassInfo(index, &basic);
@@ -1187,7 +1197,7 @@ public:
 		info->cardinality = basic.cardinality;
 		strcpy_s(info->category, basic.category);
 		strcpy_s(info->name, basic.name);
-		strcpy_s(info->subCategories, index == 0 ? "Fx" : "");
+		strcpy_s(info->subCategories, index == 1 ? "" : "Fx");
 		strcpy_s(info->vendor, "EqualizerAPO-XT Tests");
 		strcpy_s(info->version, "1.0.0");
 		strcpy_s(info->sdkVersion, "VST 3.8");

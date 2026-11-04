@@ -101,9 +101,9 @@ static std::mutex& instanceMapMutex()
 }
 
 // The policy and the registry behind PluginResidency.h. The registry is
-// guarded by instanceMapMutex and is created on first use and never
-// destroyed: emptying it at process exit would run ExitDll and FreeLibrary
-// from static destruction, under the loader lock.
+// guarded by instanceMapMutex and is created on first use. No static
+// destructor releases it: DLL hosts retain it for process lifetime, while
+// executable hosts can explicitly drain it after their workers stop.
 static std::atomic<bool> keepPluginsLoaded{false};
 
 static std::vector<std::shared_ptr<VSTPluginLibrary>>& retainedLibraries()
@@ -121,6 +121,20 @@ bool PluginResidency::holdsLoadedModules()
 {
 	lock_guard<mutex> lock(instanceMapMutex());
 	return !retainedLibraries().empty();
+}
+
+void PluginResidency::releaseForProcessShutdown()
+{
+	keepPluginsLoaded.store(false);
+	vector<shared_ptr<VSTPluginLibrary>> libraries;
+	{
+		lock_guard<mutex> lock(instanceMapMutex());
+		libraries.swap(retainedLibraries());
+	}
+	// Destructors re-enter instanceMapMutex. Release outside the lock, before
+	// Windows starts tearing down plugin dependencies in DLL_PROCESS_DETACH.
+	while (!libraries.empty())
+		libraries.pop_back();
 }
 
 void VSTPluginLibrary::retainIfKeepingLoaded(const shared_ptr<VSTPluginLibrary>& library)
@@ -248,6 +262,14 @@ const std::string& VSTPluginLibrary::getVST3SubCategories() const
 	return vst3SubCategories;
 }
 
+const VSTPluginLibrary::VST3Class* VSTPluginLibrary::findVST3Class(const std::wstring& id) const
+{
+	for (const auto& entry : vst3Classes)
+		if (id.empty() || _wcsicmp(entry.id.c_str(), id.c_str()) == 0)
+			return &entry;
+	return nullptr;
+}
+
 bool VSTPluginLibrary::loadFunctions()
 {
 	// Detect the format from the loaded module, not from its file extension.
@@ -302,14 +324,24 @@ int VSTPluginLibrary::customInitialize()
 			return LOADING_FAILED;
 	}
 
+	vst3Classes.clear();
 	for (Steinberg::int32 i = 0; i < factory->countClasses(); i++)
 	{
 		Steinberg::PClassInfo info;
 		if (factory->getClassInfo(i, &info) == Steinberg::kResultOk
 			&& strcmp(info.category, kVstAudioEffectClass) == 0)
 		{
-			vst3ClassInfo = info;
-			vst3SubCategories.clear();
+			VST3Class entry;
+			entry.info = info;
+			// On Windows a TUID has COM GUID byte order. Match FUID::toString
+			// without linking the SDK's optional funknown.cpp implementation.
+			GUID guid;
+			memcpy(&guid, info.cid, sizeof(guid));
+			wchar_t id[39] = {};
+			StringFromGUID2(guid, id, 39);
+			for (wchar_t c : id)
+				if ((c >= L'0' && c <= L'9') || (c >= L'A' && c <= L'F'))
+					entry.id += c;
 			Steinberg::TUID factory2Iid;
 			Steinberg::IPluginFactory2::iid.toTUID(factory2Iid);
 			Steinberg::IPluginFactory2* rawFactory2 = nullptr;
@@ -318,12 +350,18 @@ int VSTPluginLibrary::customInitialize()
 				auto factory2 = Steinberg::IPtr<Steinberg::IPluginFactory2>::adopt(rawFactory2);
 				Steinberg::PClassInfo2 info2;
 				if (factory2->getClassInfo2(i, &info2) == Steinberg::kResultOk)
-					vst3SubCategories = info2.subCategories;
+					entry.subCategories = info2.subCategories;
 			}
-			return 0;
+			vst3Classes.push_back(std::move(entry));
 		}
 	}
 
+	if (!vst3Classes.empty())
+	{
+		vst3ClassInfo = vst3Classes.front().info;
+		vst3SubCategories = vst3Classes.front().subCategories;
+		return 0;
+	}
 	return FUNCTIONS_MISSING;
 }
 
