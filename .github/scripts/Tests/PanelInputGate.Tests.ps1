@@ -3,6 +3,38 @@ BeforeAll {
     $script:plan = & $gate -WorkspaceRoot 'unused-plan-root' -PlanOnly
 }
 
+Describe 'Panel input gate saved VST3 state' {
+    BeforeAll {
+        # Import only the pure reader; never load or run the desktop helper.
+        $ast = [Management.Automation.Language.Parser]::ParseFile($gate, [ref]$null, [ref]$null)
+        $reader = $ast.Find({ param($node)
+            $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Read-State'
+        }, $true)
+        . ([scriptblock]::Create($reader.Extent.Text))
+        $pluginPath = Join-Path $TestDrive 'Plugin.vst3'
+        $case = [pscustomobject]@{ Format = 'VST3'; ParameterNames = @('gain') }
+        $state = @('__dpf_program__', '0', '__dpf_parameters_begin__', 'gain', '0.5', '__dpf_parameters_end__', '') -join [char]0
+        $chunk = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($state))
+        $prefix = 'VSTPlugin: Library "' + $pluginPath + '" '
+    }
+
+    It 'reads the complete legacy state without an explicit class' {
+        (Read-State ($prefix + 'ChunkData "' + $chunk + '"'))['gain'] | Should -Be 0.5
+    }
+
+    It 'reads the same complete state after a saved class ID' {
+        (Read-State ($prefix + 'ClassId 445046206173636C5145334400000000 ChunkData "' + $chunk + '"'))['gain'] | Should -Be 0.5
+    }
+
+    It 'still rejects malformed class IDs' {
+        { Read-State ($prefix + 'ClassId invalid ChunkData "' + $chunk + '"') } | Should -Throw
+    }
+
+    It 'still requires full state after a valid class ID' {
+        { Read-State ($prefix + 'ClassId 445046206173636C5145334400000000') } | Should -Throw
+    }
+}
+
 Describe 'Panel input gate plan' {
     It 'returns exactly one plan object without loading the desktop helper' {
         @($plan).Count | Should -Be 1
