@@ -8,6 +8,9 @@ TheFireKahuna의 equalizerAPO64 트리에서 포크된 뒤(마지막 업스트�
 
 ## Unreleased
 
+- 편집기와 장치 선택기에 GUI 배율 설정을 추가했습니다. 50~300% 범위에서
+  선택하거나 직접 입력할 수 있으며 재시작하면 적용됩니다.
+
 ## v2.61.3 — 2026-10-24
 
 - **Rack 스킨의 Device·Stage 버튼도 브론즈로 잠깁니다.** 다크 Rack에서 Device

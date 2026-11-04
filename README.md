@@ -98,6 +98,9 @@ Current work areas:
 
 ## Features
 
+- Adjust the GUI to 50–300% of Windows display scaling in
+  **View → Interface → GUI scale**, including custom percentages.
+
 - Double-precision internal audio processing for complex filter chains.
 - Convolution, GraphicEQ, parametric EQ, VST2/VST3, and standard Equalizer APO filter support.
 - ASIO: every ASIO driver appears in the Device Selector's playback and

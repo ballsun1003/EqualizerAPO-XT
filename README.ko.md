@@ -87,6 +87,9 @@ EqualizerAPO-XT는 Windows용 시스템 전체 이퀄라이저인 [Equalizer APO
 
 ## 주요 기능
 
+- **보기 → 인터페이스 → GUI 배율**에서 Windows 화면 배율에 대한 GUI 배율을
+  50~300%로 조절합니다. 사용자 지정 배율도 입력할 수 있습니다.
+
 - 오디오를 내부에서 double 정밀도로 처리해 복잡한 필터 체인에서도 정밀도를 잃지 않습니다.
 - Convolution, GraphicEQ, 파라메트릭 EQ, VST2/VST3와 기존 Equalizer APO 필터를 지원합니다.
 - ASIO: 모든 ASIO 드라이버가 장치 선택기의 재생·녹음 목록에 나타나고, 체크하면

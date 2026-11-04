@@ -56,6 +56,10 @@ void installMessageHandler();
 // language chosen in the Editor.
 void applyUserLocale();
 
+// Before QApplication, on every in-process restart. Scales the whole UI in
+// addition to the monitor's DPI; does not change Windows display settings.
+void applyUserScale();
+
 // Installs the qtbase and <catalogName> catalogs from :/translations for the
 // default locale. The translators are caller-owned so they outlive the
 // QApplication (declare them in main() before calling exec()).

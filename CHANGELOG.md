@@ -14,6 +14,9 @@ tags are clean `vX.Y.Z` names. Installers for every version are on the
 
 ## Unreleased
 
+- Added a persistent GUI scale preference (50–300%, including custom values)
+  for the Editor and Device Selector, applied on restart.
+
 ## v2.61.3 — 2026-10-24
 
 - **Rack's Device and Stage buttons latch in bronze too.** In the dark Rack
