@@ -36,7 +36,8 @@ class VSTPluginInstance
 public:
 	// Picks the format once. This header deliberately includes no VST SDK.
 	static std::unique_ptr<VSTPluginInstance> create(
-		const std::shared_ptr<VSTPluginLibrary>& library, int processLevel);
+		const std::shared_ptr<VSTPluginLibrary>& library, int processLevel,
+		const std::wstring& classId = L"");
 	bool isVST3() const;
 
 	virtual ~VSTPluginInstance() = default;

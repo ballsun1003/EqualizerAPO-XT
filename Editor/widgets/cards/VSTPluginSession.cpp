@@ -13,6 +13,10 @@
 
 #include <QAbstractEventDispatcher>
 #include <QCheckBox>
+#include <QComboBox>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QSignalBlocker>
 #include <QCoreApplication>
 #include <QDir>
 #include <QEvent>
@@ -35,8 +39,8 @@ using std::unordered_map;
 using std::wstring;
 
 VSTPluginSession::VSTPluginSession(Row row, std::shared_ptr<VSTPluginLibrary> library, wstring chunkData,
-	unordered_map<wstring, float> paramMap)
-	: row(row), pluginLibrary(std::move(library)), currentChunkData(std::move(chunkData)),
+	unordered_map<wstring, float> paramMap, wstring classId)
+	: row(row), pluginLibrary(std::move(library)), selectedClassId(std::move(classId)), currentChunkData(std::move(chunkData)),
 	currentParamMap(std::move(paramMap))
 {
 }
@@ -90,6 +94,73 @@ void VSTPluginSession::setAutoApplyDialog(bool value)
 bool VSTPluginSession::loading() const
 {
 	return currentStatus.loading;
+}
+
+QWidget* VSTPluginSession::createClassSelector(QWidget* parent)
+{
+	auto* selector = new QWidget(parent);
+	auto* layout = new QHBoxLayout(selector);
+	layout->setContentsMargins(0, 0, 0, 0);
+	auto* label = new QLabel(tr("Effect"), selector);
+	auto* combo = new QComboBox(selector);
+	combo->setObjectName(QStringLiteral("VSTClassSelector"));
+	combo->setAccessibleName(tr("VST3 effect"));
+	combo->setToolTip(tr("Choose the effect inside this VST3 module. Changing it resets the plugin state and channel routing."));
+	label->setBuddy(combo);
+	layout->addWidget(label);
+	layout->addWidget(combo, 1);
+	selector->hide();
+	connect(this, &VSTPluginSession::loadFinished, selector, [this, selector, combo]() {
+		QSignalBlocker blocker(combo);
+		combo->clear();
+		if (!pluginLibrary->isLoadedNow() || !pluginLibrary->isVST3())
+		{
+			selector->hide();
+			return;
+		}
+		for (const auto& entry : pluginLibrary->getVST3Classes())
+		{
+			combo->addItem(QString::fromUtf8(entry.info.name), QString::fromStdWString(entry.id));
+			combo->setItemData(combo->count() - 1, QString::fromStdWString(entry.id), Qt::ToolTipRole);
+		}
+		int index = selectedClassId.empty() ? 0 : combo->findData(QString::fromStdWString(selectedClassId));
+		if (index < 0)
+		{
+			combo->addItem(tr("Missing effect: %1").arg(QString::fromStdWString(selectedClassId)),
+				QString::fromStdWString(selectedClassId));
+			index = combo->count() - 1;
+		}
+		combo->setCurrentIndex(index);
+		selector->setVisible(combo->count() > 1);
+	});
+	connect(combo, &QComboBox::activated, this, [this, combo](int index) {
+		selectClass(combo->itemData(index).toString().toStdWString());
+	});
+	return selector;
+}
+
+void VSTPluginSession::selectClass(const wstring& id)
+{
+	if (loading() || !pluginLibrary->isVST3() || id == selectedClassId
+		|| pluginLibrary->findVST3Class(id) == nullptr)
+		return;
+	const bool keepEmbed = isEmbedded || intent.embedPending();
+	applyEmbed(false);
+	previewFeeder.stop();
+	releasePanelProcessing();
+	intent.replacementStarted();
+	pendingDialogParent = nullptr;
+	loadGeneration++;
+	effect.reset();
+	selectedClassId = id;
+	currentChunkData.clear();
+	currentParamMap.clear();
+	replacementPending = false;
+	currentStatus = Status();
+	emit classChanged();
+	requestPlugin();
+	if (keepEmbed)
+		requestEmbed(true);
 }
 
 void VSTPluginSession::initPlugin()
@@ -195,11 +266,19 @@ void VSTPluginSession::applyLoadResult(int result)
 		}
 		}
 	}
+	else if (!selectedClassId.empty() && (!pluginLibrary->isVST3()
+		|| pluginLibrary->findVST3Class(selectedClassId) == nullptr))
+	{
+		currentStatus.critical = true;
+		currentStatus.text = tr("VST3 effect %1 was not found in this library.").arg(QString::fromStdWString(selectedClassId));
+	}
 	else
 	{
-		effect = VSTPluginInstance::create(pluginLibrary, 1);
+		effect = VSTPluginInstance::create(pluginLibrary, 1, selectedClassId);
 		if (effect->initialize())
 		{
+			if (pluginLibrary->isVST3())
+				selectedClassId = pluginLibrary->findVST3Class(selectedClassId)->id;
 			effect->setLanguage(QLocale().language() == QLocale::German ? 2 : 1);
 			effect->setAutomateFunc([this]() { onAutomate(); });
 			currentStatus.text = QString::fromStdWString(effect->getName());
@@ -233,7 +312,7 @@ void VSTPluginSession::replaceLibrary(const QString& writtenPath)
 	// A replacement that lands before the previous one finished compares
 	// against the plug-in the row started from, not the one never loaded.
 	if (!replacementPending)
-		replacementOldId = effect != nullptr ? effect->uniqueID() : 0;
+		replacementOldId = effect != nullptr && !effect->isVST3() ? effect->uniqueID() : 0;
 	effect.reset();
 	replacementPending = true;
 
@@ -242,6 +321,7 @@ void VSTPluginSession::replaceLibrary(const QString& writtenPath)
 	if (path.length() > 0)
 		path = QDir::toNativeSeparators(QFileInfo(pluginsDir, writtenPath).absoluteFilePath());
 	pluginLibrary = VSTPluginLibrary::getInstance(path.toStdWString());
+	selectedClassId.clear();
 	loadGeneration++;
 	currentStatus = Status();
 	requestPlugin();

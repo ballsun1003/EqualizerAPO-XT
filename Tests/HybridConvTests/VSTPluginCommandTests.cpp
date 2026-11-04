@@ -324,6 +324,27 @@ TEST_CASE(VSTPluginCommandTests, testVSTPluginBusContract)
 		L"cannot be combined");
 }
 
+TEST_CASE(VSTPluginCommandTests, testVST3ClassIdentity)
+{
+	const wstring cid = L"7A53DB11446B41D49D7659A119A23402";
+	for (const wstring& suffix : {wstring(L" Gain 0.25"), wstring(L" Input Stereo Output Stereo ChunkData QUJDRA==")})
+	{
+		const auto cmd = VSTPluginCommand::parse(L"", L"Library shell.vst3 ClassId " + cid + suffix);
+		harness.expectTrue(cmd.valid && cmd.classId == cid, "ClassId parses alongside state and bus layouts");
+		const auto restored = VSTPluginCommand::parse(L"", L"Library shell.vst3" + cmd.serialize());
+		harness.expectTrue(restored.valid && restored.classId == cid && restored.paramMap == cmd.paramMap
+			&& restored.chunkData == cmd.chunkData, "ClassId and state survive serialization");
+	}
+	harness.expectTrue(VSTPluginCommand::parse(L"", L"Library shell.vst3 ClassId 7a53db11446b41d49d7659a119a23402").classId == cid,
+		"ClassId is normalized without changing its value");
+	for (const wchar_t* invalid : {L"ClassId", L"ClassId xyz", L"ClassId 7A53DB11446B41D49D7659A119A2340G",
+		L"ClassId 7A53DB11446B41D49D7659A119A23402 ClassId 7A53DB11446B41D49D7659A119A23401"})
+		harness.expectFalse(VSTPluginCommand::parse(L"", L"Library shell.vst3 " + wstring(invalid)).valid,
+			"invalid and duplicate ClassId fail instead of selecting the default");
+	harness.expectTrue(VSTPluginCommand::parse(L"", L"Library shell.vst3").classId.empty(),
+		"existing configurations keep the implicit first-class choice");
+}
+
 TEST_CASE(VSTPluginCommandTests, testVSTPluginChannelFill)
 {
 	// Per-slot fill: one selector per negotiated bus slot, "-" for a silent

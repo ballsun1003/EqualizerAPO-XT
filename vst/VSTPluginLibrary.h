@@ -23,6 +23,7 @@
 #include <queue>
 #include <string>
 #include <unordered_map>
+#include <vector>
 #include "AbstractLibrary.h"
 // aeffectx.h for the VST2 entry-point signature and the two base VST3 headers for
 // the factory this class owns. It deliberately does not include
@@ -64,6 +65,15 @@ public:
 	// host uses it to recognize upmixer-type plugins whose input bus must
 	// stay stereo while the output bus spans the device.
 	const std::string& getVST3SubCategories() const;
+	struct VST3Class
+	{
+		Steinberg::PClassInfo info;
+		std::wstring id; // FUID::toString: 32 hexadecimal digits, independent of factory order.
+		std::string subCategories;
+	};
+	const std::vector<VST3Class>& getVST3Classes() const { return vst3Classes; }
+	// An empty ID preserves the legacy first-effect choice. Explicit IDs never fall back.
+	const VST3Class* findVST3Class(const std::wstring& id) const;
 
 protected:
 	bool loadFunctions() override;
@@ -108,4 +118,5 @@ private:
 	bool vst3ModuleInitialized = false;
 	Steinberg::PClassInfo vst3ClassInfo;
 	std::string vst3SubCategories;
+	std::vector<VST3Class> vst3Classes;
 };

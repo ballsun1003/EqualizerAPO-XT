@@ -105,6 +105,68 @@ struct CombinedStateParameter
 // Audit #348 TD-48: the stream a plug-in reads and writes its state through
 // takes positions from the plug-in, so a wild one must not turn into an
 // allocation or a copy past the plug-in's buffer.
+TEST_CASE(Vst3HostTests, testMultipleClassIdentity)
+{
+	const wstring path = prepareBundle(exeDirectory(), L"MultiClassTest.vst3");
+	const auto loaded = VSTPluginLibrary::load(path);
+	harness.require(loaded.status >= 0, "multi-class fixture loads");
+	const auto& library = loaded.library;
+	harness.require(library->getVST3Classes().size() == 2, "all audio effects are enumerated, controllers excluded");
+	const auto firstId = library->getVST3Classes()[0].id;
+	const auto secondId = library->getVST3Classes()[1].id;
+	auto first = VSTPluginInstance::create(library, 2, firstId);
+	auto second = VSTPluginInstance::create(library, 2, secondId);
+	harness.require(first->initialize() && second->initialize(), "two classes of one module initialize together");
+	harness.expectTrue(first->getName() == L"TestVst3Plugin" && second->getName() == L"TestVst3SecondEffect",
+		"instance names follow their own class, independent of library cache");
+	harness.expectEqual(first->uniqueID(), second->uniqueID(), "fixture proves truncated VST2 identities collide");
+	PluginState state;
+	state.gain = 0.75;
+	first->writeToEffect(encodeState(state), {});
+	state.gain = 0.25;
+	second->writeToEffect(encodeState(state), {});
+	std::wstring saved;
+	std::unordered_map<wstring, float> params;
+	second->readFromEffect(saved, params);
+	second.reset();
+	second = VSTPluginInstance::create(library, 2, secondId);
+	harness.require(second->initialize(), "second class reloads by stable CID");
+	second->writeToEffect(saved, params);
+	for (auto* effect : {first.get(), second.get()})
+	{
+		effect->prepareForProcessing(48000, 4);
+		double left[4] = {1, 0, 1, 0}, right[4] = {0, 1, 0, 1};
+		double outLeft[4] = {}, outRight[4] = {};
+		double* input[] = {left, right};
+		double* output[] = {outLeft, outRight};
+		effect->startProcessing();
+		effect->processDoubleReplacing(input, output, 4);
+		effect->stopProcessing();
+		const double gain = effect == first.get() ? 0.75 : 0.25;
+		harness.expectNear(outLeft[0], gain, 1e-9, "class-specific state reaches left audio output");
+		harness.expectNear(outRight[1], gain, 1e-9, "class-specific state reaches right audio output");
+		harness.expectNear(outLeft[1] + outRight[0], 0, 1e-9, "L-only/R-only channels do not cross");
+	}
+	auto missing = VSTPluginInstance::create(library, 2, L"00000000000000000000000000000000");
+	harness.expectFalse(missing->initialize(), "missing explicit CID never falls back to first effect");
+	VSTPluginFilterFactory factory;
+	wstring command = L"VSTPlugin";
+	wstring parameters = L"Library \"" + path + L"\" ClassId " + secondId + L" Input Stereo Output Stereo";
+	auto outcome = factory.createFilter(L"multi-class.txt", command, parameters);
+	harness.require(outcome.filters.size() == 1, "engine factory accepts a non-first class");
+	auto* filter = static_cast<VSTPluginFilter*>(outcome.filters[0].get());
+	harness.expectTrue(filter->getClassId() == secondId, "engine carries the same CID as the editor");
+	filter->initialize(48000, 4, {L"L", L"R"});
+	double left[4] = {1}, right[4] = {0, 1}, outLeft[4] = {}, outRight[4] = {};
+	double* input[] = {left, right};
+	double* output[] = {outLeft, outRight};
+	filter->process(output, input, 4);
+	harness.expectNear(outLeft[0], 0.25, 1e-9, "engine instantiates the second class, not the first");
+	parameters = L"Library \"" + path + L"\" ClassId 00000000000000000000000000000000";
+	harness.expectTrue(factory.createFilter(L"multi-class.txt", command, parameters).filters.empty(),
+		"engine rejects a removed class");
+}
+
 TEST_CASE(Vst3HostTests, testMemoryStreamBounds)
 {
 	using Steinberg::IBStream;

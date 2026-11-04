@@ -350,6 +350,7 @@ int SkinGallery::runVstRoundTripSelfTest()
 {
 	struct Case { const wchar_t* name = nullptr; std::wstring params; };
 	const Case cases[] = {
+		{ L"classId", L"Library fake.vst3 ClassId 7A53DB11446B41D49D7659A119A23402 ChunkData QUJDRA==" },
 		{ L"chunkData", L"Library \"fake plugin.dll\" ChunkData \"QUJDREVGR0g=\"" },
 		{ L"paramMap", L"Library fake.dll Gain 0.5 Mix 0.25 Width 1" },
 		{ L"paramMap-quoted-name", L"Library fake.dll \"Dry/Wet\" 0.75 Output 0.5" },
@@ -381,7 +382,7 @@ int SkinGallery::runVstRoundTripSelfTest()
 		const std::vector<std::wstring> fillIn0 = f0->getInputChannels();
 		const std::vector<std::wstring> fillOut0 = f0->getOutputChannels();
 
-		VSTPluginFilterGUI gui(f0->getLibrary(), chunk0, map0, stereo0, bus0, fillIn0, fillOut0);
+		VSTPluginFilterGUI gui(f0->getLibrary(), chunk0, map0, stereo0, bus0, fillIn0, fillOut0, f0->getClassId());
 		QString outCommand, outParams;
 		gui.store(outCommand, outParams);
 
@@ -402,7 +403,8 @@ int SkinGallery::runVstRoundTripSelfTest()
 		const bool sameBusContract = bus0.has_value() == bus1.has_value()
 			&& (!bus0 || (bus0->input == bus1->input && bus0->output == bus1->output));
 		const bool sameSlotFill = fillIn0 == f1->getInputChannels() && fillOut0 == f1->getOutputChannels();
-		bool ok = (chunk0 == chunk1) && (map0 == map1) && (stereo0 == stereo1) && sameBusContract && sameSlotFill;
+		bool ok = (chunk0 == chunk1) && (map0 == map1) && (stereo0 == stereo1) && sameBusContract && sameSlotFill
+			&& f0->getClassId() == f1->getClassId();
 		if (!ok)
 		{
 			failures++;

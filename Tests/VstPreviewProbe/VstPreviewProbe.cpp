@@ -136,7 +136,8 @@ bool processDoubleGuarded(VSTPluginInstance* instance, double** input, double** 
 	}
 }
 
-int runPluginProbe(const std::wstring& pluginPath, double seconds, float sampleRate, bool expectNonsilent)
+int runPluginProbe(const std::wstring& pluginPath, double seconds, float sampleRate, bool expectNonsilent,
+	const std::wstring& classId)
 {
 	StepClock clock;
 	std::shared_ptr<VSTPluginLibrary> library = VSTPluginLibrary::getInstance(pluginPath);
@@ -148,7 +149,7 @@ int runPluginProbe(const std::wstring& pluginPath, double seconds, float sampleR
 		return 2;
 	}
 
-	auto instanceOwner = VSTPluginInstance::create(library, 1);
+	auto instanceOwner = VSTPluginInstance::create(library, 1, classId);
 	VSTPluginInstance& instance = *instanceOwner;
 	if (!instance.initialize())
 	{
@@ -643,6 +644,8 @@ int runCaptureProbe(double seconds, bool expectAudio)
 int wmain(int argc, wchar_t* argv[])
 {
 	std::wstring pluginPath;
+	std::wstring classId;
+	std::wstring listClassesPath;
 	std::wstring monitorPluginPath;
 	double seconds = 2.0;
 	float sampleRate = 48000.0f;
@@ -655,6 +658,7 @@ int wmain(int argc, wchar_t* argv[])
 	const wchar_t* usage =
 		L"Usage: VstPreviewProbe [--plugin <path.vst3|path.dll>] [--seconds N] [--rate N]\n"
 		L"                       [--expect-nonsilent] [--loopback]\n"
+		L"                       [--class-id <32-hex-CID>] [--list-classes <module.vst3>]\n"
 		L"                       [--monitor <path.vst3|path.dll>] [--expect-live | --expect-static]\n"
 		L"                       [--capture-only] [--expect-audio | --expect-silence]\n";
 
@@ -665,6 +669,8 @@ int wmain(int argc, wchar_t* argv[])
 	probesupport::SetBoolVisitor expectAudioVisitor(expectAudio, true);
 	probesupport::SetBoolVisitor expectSilenceVisitor(expectAudio, false);
 	TCLAP::MultiArg<std::string> pluginArg("", "plugin", "", false, "value", parser);
+	TCLAP::MultiArg<std::string> classIdArg("", "class-id", "", false, "value", parser);
+	TCLAP::MultiArg<std::string> listClassesArg("", "list-classes", "", false, "value", parser);
 	TCLAP::MultiArg<std::string> monitorArg("", "monitor", "", false, "value", parser);
 	TCLAP::MultiArg<std::string> secondsArg("", "seconds", "", false, "value", parser);
 	TCLAP::MultiArg<std::string> rateArg("", "rate", "", false, "value", parser);
@@ -683,6 +689,10 @@ int wmain(int argc, wchar_t* argv[])
 
 	if (pluginArg.isSet())
 		pluginPath = probesupport::lastWide(pluginArg);
+	if (classIdArg.isSet())
+		classId = probesupport::lastWide(classIdArg);
+	if (listClassesArg.isSet())
+		listClassesPath = probesupport::lastWide(listClassesArg);
 	if (monitorArg.isSet())
 		monitorPluginPath = probesupport::lastWide(monitorArg);
 	if (secondsArg.isSet())
@@ -692,7 +702,7 @@ int wmain(int argc, wchar_t* argv[])
 	expectNonsilent = expectNonsilentArg.getValue() != 0;
 	loopback = loopbackArg.getValue() != 0;
 	captureOnly = captureOnlyArg.getValue() != 0;
-	if (pluginPath.empty() && monitorPluginPath.empty() && !loopback && !captureOnly)
+	if (pluginPath.empty() && listClassesPath.empty() && monitorPluginPath.empty() && !loopback && !captureOnly)
 	{
 		wprintf(L"%s", usage);
 		return 1;
@@ -705,9 +715,17 @@ int wmain(int argc, wchar_t* argv[])
 		return 4;
 	}
 
+	if (!listClassesPath.empty())
+	{
+		const auto loaded = VSTPluginLibrary::load(listClassesPath);
+		if (loaded.status < 0 || !loaded.library->isVST3())
+			return 2;
+		for (const auto& entry : loaded.library->getVST3Classes())
+			wprintf(L"%ls\t%hs\t%hs\n", entry.id.c_str(), entry.info.name, entry.subCategories.c_str());
+	}
 	if (!pluginPath.empty())
 	{
-		const int result = runPluginProbe(pluginPath, seconds, sampleRate, expectNonsilent);
+		const int result = runPluginProbe(pluginPath, seconds, sampleRate, expectNonsilent, classId);
 		if (result != 0)
 			return result;
 	}

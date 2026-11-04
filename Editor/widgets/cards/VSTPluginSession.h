@@ -68,7 +68,7 @@ public:
 	};
 
 	VSTPluginSession(Row row, std::shared_ptr<VSTPluginLibrary> library, std::wstring chunkData,
-		std::unordered_map<std::wstring, float> paramMap);
+		std::unordered_map<std::wstring, float> paramMap, std::wstring classId = L"");
 	~VSTPluginSession() override;
 
 	const std::shared_ptr<VSTPluginLibrary>& library() const;
@@ -81,6 +81,9 @@ public:
 	bool autoApplyDialog() const;
 	void setAutoApplyDialog(bool autoApply);
 	bool loading() const;
+	const std::wstring& classId() const { return selectedClassId; }
+	void selectClass(const std::wstring& id);
+	QWidget* createClassSelector(QWidget* parent);
 
 	// Requests the library load without blocking the UI thread, then creates the
 	// instance on the UI thread. loadFinished is emitted for synchronous and
@@ -133,6 +136,7 @@ protected:
 	bool eventFilter(QObject* watched, QEvent* event) override;
 
 signals:
+	void classChanged();
 	// status() changed.
 	void statusChanged();
 	// A requested load finished, including a synchronous fast path.
@@ -180,6 +184,7 @@ private:
 
 	Row row;
 	std::shared_ptr<VSTPluginLibrary> pluginLibrary;
+	std::wstring selectedClassId;
 	std::unique_ptr<VSTPluginInstance> effect;
 	std::wstring currentChunkData;
 	std::unordered_map<std::wstring, float> currentParamMap;
